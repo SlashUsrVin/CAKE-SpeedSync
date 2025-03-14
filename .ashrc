@@ -1,1 +1,1 @@
-[ -f /jffs/scripts/dyn-tc-cake/ashrc-functions.sh ] && . /jffs/scripts/dyn-tc-cake/ashrc-functions.sh
+[ -f /jffs/scripts/dyn-tc-cake/dtc-functions.sh ] && . /jffs/scripts/dyn-tc-cake/dtc-functions.sh

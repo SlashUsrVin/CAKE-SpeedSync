@@ -31,9 +31,15 @@ fetch_file "dtc-functions.sh"
 #Make scripts executable
 chmod +x $TGT_DIR/dyn-tc-cake.sh
 chmod +x $TGT_DIR/services-start
+chmod +x $TGT_DIR/dtc-functions.sh
 
 #Finalize installation
 mv -f $TGT_DIR/dyn-tc-cake.sh $JFFS_DIR/dyn-tc-cake.sh
 mv -f $JFFS_DIR/services-start $TGT_DIR/$(date +"%Y%m%d%H%M%S")-services-start
 cp -f $TGT_DIR/.ashrc /tmp/home/root/
 cp -f $TGT_DIR/.profile /tmp/home/root/
+
+[ -f /jffs/scripts/dyn-tc-cake/dtc-functions.sh ] && . /jffs/scripts/dyn-tc-cake/dtc-functions.sh
+
+echo "Installation Complete!"
+echo "Run dyntccakestatus"

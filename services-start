@@ -26,3 +26,7 @@ cd /jffs/scripts || exit 1
 cru d dyn-tc-cake
 #Re-add cron job
 cru a dyn-tc-cake "0 7-23/2 * * * /jffs/scripts/dyn-tc-cake.sh"
+
+#Re-apply .ashrc and .profile
+cp -f /jffs/scripts/dyn-tc-cake/.ashrc /tmp/home/root/
+cp -f /jffs/scripts/dyn-tc-cake/.profile /tmp/home/root/
