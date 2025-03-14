@@ -35,6 +35,13 @@ chmod +x $TGT_DIR/dtc-functions.sh
 chmod +x $TGT_DIR/.ashrc
 chmod +x $TGT_DIR/.profile
 
+#Convert line breaks to unix line breaks
+dos2unix $TGT_DIR/dyn-tc-cake.sh
+dos2unix $TGT_DIR/services-start
+dos2unix $TGT_DIR/dtc-functions.sh
+dos2unix $TGT_DIR/.ashrc
+dos2unix $TGT_DIR/.profile
+
 #Finalize installation
 mv -f $TGT_DIR/dyn-tc-cake.sh $JFFS_DIR/dyn-tc-cake.sh
 [ -f $JFFS_DIR/services-start ] && mv -f $JFFS_DIR/services-start $TGT_DIR/$(date +"%Y%m%d%H%M%S")-services-start
