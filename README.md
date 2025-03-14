@@ -12,6 +12,11 @@ Uses diffserv4 for traffic prioritization (Highest to Lowest Priority):
 3.  Best Effort - Normal traffic (Web browsing) (default category)
 4.  Bulk - Lowest priority (downloads, torrents, etc) (processed last)
 
+Tested on ASUS GT-AX11000 Pro
+
+Dependencies:
+1.  ASUS Router running on the latest MERLIN firmware with custom script support and CAKE feature
+
 Installation:
 1.  Login to your ASUS Router Web UI
 2.  Enable JFFS custom scripts and configs (Administration > System)
