@@ -2,6 +2,7 @@
 
 GIT_REPO="mvin321/MERLIN-dyn-tc-cake"
 BRANCH="main"
+JFFS_DIR "/jffs/scripts/"
 TGT_DIR="/jffs/scripts/dyn-tc-cake"
 GIT_TOKEN="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"
 
@@ -19,3 +20,9 @@ fetch_file ".ashrc"
 fetch_file ".profile"
 fetch_file "dyn-tc-cake.sh"
 fetch_file "services-start"
+fetch_file "dtc-functions.sh
+
+mv $TGT_DIR/dyn-tc-cake.sh $JFFS_DIR/dyn-tc-cake.sh
+mv $JFFS_DIR/services-start $TGT_DIR/$(date)-services-start
+cp $TGT_DIR/.ashrc /tmp/home/root/
+cp $TGT_DIR/.profile /tmp/home/root/
