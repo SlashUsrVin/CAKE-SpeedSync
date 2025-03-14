@@ -42,4 +42,3 @@ cp -f $TGT_DIR/.profile /tmp/home/root/
 [ -f /jffs/scripts/dyn-tc-cake/dtc-functions.sh ] && . /jffs/scripts/dyn-tc-cake/dtc-functions.sh
 
 echo -e "\nInstallation Complete!\n\nManually reboot your router.\n\nEvery time you log back in (ssh) you should see the status of what was changed or you can run dyntccakestatus manually"
-echo "Run dyntccakestatus"
