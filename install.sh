@@ -1,4 +1,11 @@
-curl -fsSL "https://github.com/mvin321/MERLIN-dyn-tc-cake/blob/main/.ashrc" -o /jffs/scripts/dyn-tc-cake/.ashrc
-curl -fsSL "https://github.com/mvin321/MERLIN-dyn-tc-cake/blob/main/.profile" -o /jffs/scripts/dyn-tc-cake/.profile
-curl -fsSL "https://github.com/mvin321/MERLIN-dyn-tc-cake/blob/main/dyn-tc-cake.sh" -o /jffs/scripts/dyn-tc-cake/yn-tc-cake.sh
-curl -fsSL "https://github.com/mvin321/MERLIN-dyn-tc-cake/blob/main/services-start" -o /jffs/scripts/dyn-tc-cake/services-start
+#!/bin/sh
+
+GIT_REP_URL="https://raw.githubusercontent.com/mvin321/MERLIN-dyn-tc-cake/main"
+TGT_DIR="/jffs/scripts/dyn-tc-cake"
+
+mkdir -p "$TGT_DIR"
+
+curl -fsSL "$GIT_REP_URL/.ashrc" -o "$TGT_DIR/.ashrc"
+curl -fsSL "$GIT_REP_URL/.profile" -o "$TGT_DIR/.profile"
+curl -fsSL "$GIT_REP_URL/dyn-tc-cake.sh" -o "$TGT_DIR/dyn-tc-cake.sh"
+curl -fsSL "$GIT_REP_URL/services-start" -o "$TGT_DIR/services-start"
