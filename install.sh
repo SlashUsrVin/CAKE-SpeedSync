@@ -32,6 +32,8 @@ fetch_file "dtc-functions.sh"
 chmod +x $TGT_DIR/dyn-tc-cake.sh
 chmod +x $TGT_DIR/services-start
 chmod +x $TGT_DIR/dtc-functions.sh
+chmod +x $TGT_DIR/.ashrc
+chmod +x $TGT_DIR/.profile
 
 #Finalize installation
 mv -f $TGT_DIR/dyn-tc-cake.sh $JFFS_DIR/dyn-tc-cake.sh
