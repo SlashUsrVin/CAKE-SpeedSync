@@ -35,7 +35,8 @@ chmod +x $TGT_DIR/dtc-functions.sh
 
 #Finalize installation
 mv -f $TGT_DIR/dyn-tc-cake.sh $JFFS_DIR/dyn-tc-cake.sh
-mv -f $JFFS_DIR/services-start $TGT_DIR/$(date +"%Y%m%d%H%M%S")-services-start
+[ -f $JFFS_DIR/services-start ] && mv -f $JFFS_DIR/services-start $TGT_DIR/$(date +"%Y%m%d%H%M%S")-services-start
+mv -f $TGT_DIR/services-start $JFFS_DIR/services-start
 cp -f $TGT_DIR/.ashrc /tmp/home/root/
 cp -f $TGT_DIR/.profile /tmp/home/root/
 
