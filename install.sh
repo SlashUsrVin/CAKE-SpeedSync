@@ -20,7 +20,7 @@ fetch_file ".ashrc"
 fetch_file ".profile"
 fetch_file "dyn-tc-cake.sh"
 fetch_file "services-start"
-fetch_file "dtc-functions.sh
+fetch_file "dtc-functions.sh"
 
 mv $TGT_DIR/dyn-tc-cake.sh $JFFS_DIR/dyn-tc-cake.sh
 mv $JFFS_DIR/services-start $TGT_DIR/$(date)-services-start
