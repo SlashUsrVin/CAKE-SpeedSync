@@ -2,7 +2,7 @@
 
 GIT_REPO="mvin321/MERLIN-dyn-tc-cake"
 BRANCH="main"
-JFFS_DIR "/jffs/scripts/"
+JFFS_DIR="/jffs/scripts/"
 TGT_DIR="/jffs/scripts/dyn-tc-cake"
 GIT_TOKEN="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"
 
