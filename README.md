@@ -4,7 +4,7 @@ Dynamic bandwidth control for CAKE QoS based of Ookla SpeedTest (CLI). This will
 
 By default, speedtest and dynamic updates will occur every 2 hours from 7:00 AM to 11:00 PM feel free to update the cron entry in /jffs/scripts/services-start after installation.
 
-Forces gaming ports to VOICE Tin using iptables. This is needed since some ISPs (like mine) strips DSCP tags causing all packets to fall under besteffort. This rules ensures game packets are prioritized. Feel free to remove iptable rules from /jffs/scripts/Services-Start
+Forces gaming ports to VOICE Tin using iptables. This is needed since some ISPs (like mine) strips DSCP tags causing all packets to fall under besteffort. This rules ensures game packets are prioritized. Feel free to remove iptable rules from /jffs/scripts/Services-Start if your packets are being tagged correctly.
 
 Uses diffserv4 for traffic prioritization (Highest to Lowest Priority):
 1.  Voice - VoIP, Gaming - lowest latency (processed first)
