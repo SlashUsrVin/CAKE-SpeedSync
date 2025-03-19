@@ -1,7 +1,7 @@
 [ -f /tmp/home/root/.ashrc ] && . /tmp/home/root/.ashrc
 
-echo -e "\n\n\n(dyntccakestatus)"
+echo -e "\n\n\n(css_status)"
 
-dyntccakestatus
+css_status
 
 echo ""

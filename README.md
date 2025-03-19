@@ -1,4 +1,4 @@
-# MERLIN-dyn-tc-cake - For ASUS router running MERLIN firmware. 
+# MERLIN-cake-speedsync - For ASUS router running MERLIN firmware. 
 
 Dynamic bandwidth control for CAKE QoS based of Ookla SpeedTest (CLI). This will make CAKE adapts to ISP Speed fluctuations and minimizes bufferbloat. 
 
@@ -23,12 +23,12 @@ Installation:
 3.  Enable SSH (LAN Only)
 4.  Open CMD and connect to your router via SSH (ssh user@GatewayIP)
 5.  Run syntax:
-    curl -fsSL "https://raw.githubusercontent.com/mvin321/MERLIN-dyn-tc-cake/main/install.sh" | sh
+    curl -fsSL "https://raw.githubusercontent.com/mvin321/MERLIN-cake-speedsync/main/install.sh" | sh
 6.  Once complete, reboot router manually.
     
 Scripts:
-1.  /jffs/scripts/dyn-tc-cake.sh     -->   Main Script. Disable CAKE, Runs ookla speedtest and re-apply cake with updated bandwidth
+1.  /jffs/scripts/cake-speedsync.sh     -->   Main Script. Disable CAKE, Runs ookla speedtest and re-apply cake with updated bandwidth
 2.  /jffs/scripts/Services-Start     -->   Script to re-apply iptable rules, re-set cron job, re-apply cake when router reboots 
-3.  /jffs/scripts/dtc-functions.sh   -->   Not required, function to display status: iptable rules for DSCP, active and expected cake settings, active and expected crontab entry for dyn-tc-cake
-4.  /tmp/home/root/.ashrc            -->   Re-activates dtc-functions.sh on user login (ssh)
+3.  /jffs/scripts/css-functions.sh   -->   Not required, function to display status: iptable rules for DSCP, active and expected cake settings, active and expected crontab entry for cake-speedsync
+4.  /tmp/home/root/.ashrc            -->   Re-activates css-functions.sh on user login (ssh)
 5.  /tmp/home/root/.profile          -->   Auto display status on user login (ssh)

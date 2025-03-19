@@ -1,32 +1,21 @@
 #!/bin/sh
 sleep 30
 
-#tc qdisc replace dev eth0 root cake bandwidth 93mbit besteffort dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 84
-#tc qdisc replace dev ifb4eth0 root cake bandwidth 186mbit besteffort dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 84
-
-#Delete rules if existing - ignore error if rules don't exist
-iptables -t mangle -D POSTROUTING -p udp --dport 30000:50000 -j DSCP --set-dscp-class EF 2>/dev/null
-iptables -t mangle -D POSTROUTING -p udp --sport 7000:9000 -j DSCP --set-dscp-class EF 2>/dev/null
-iptables -t mangle -D OUTPUT -p udp --sport 7000:9000 -j DSCP --set-dscp-class EF 2>/dev/null
-iptables -t mangle -D OUTPUT -p udp --dport 30000:50000 -j DSCP --set-dscp-class EF 2>/dev/null
-
-
-#Re-apply rules - Force gaming ports to VOICE TIN for CAKE QoS
-iptables -t mangle -A POSTROUTING -p udp --dport 30000:50000 -j DSCP --set-dscp-class EF
-iptables -t mangle -A POSTROUTING -p udp --sport 7000:9000 -j DSCP --set-dscp-class EF
-iptables -t mangle -A OUTPUT -p udp --sport 7000:9000 -j DSCP --set-dscp-class EF
-iptables -t mangle -A OUTPUT -p udp --dport 30000:50000 -j DSCP --set-dscp-class EF
+#Re-apply rules - Force gaming ports to VOICE Tin for CAKE QoS
+grep -oE '[0-9]+(\:[0-9]+)?' /jffs/scripts/cake-speedsync/qosports 2>/dev/null | while read -r portrange; do
+   css_set_max_qos "$portrange"
+done 
 
 #Run speedtest and apply cake settings
 cd /jffs/scripts || exit 1
-./dyn-tc-cake.sh
+./cake-speedsync.sh
 
 #Re-adjust cake settings every 2 hours past 7 am
 #Delete cron job to avoid duplicate
-cru d dyn-tc-cake
+cru d cake-speedsync
 #Re-add cron job
-cru a dyn-tc-cake "0 7-23/2 * * * /jffs/scripts/dyn-tc-cake.sh"
+cru a cake-speedsync "0 7-23/2 * * * /jffs/scripts/cake-speedsync.sh"
 
 #Re-apply .ashrc and .profile
-cp -f /jffs/scripts/dyn-tc-cake/.ashrc /tmp/home/root/
-cp -f /jffs/scripts/dyn-tc-cake/.profile /tmp/home/root/
+cp -f /jffs/scripts/cake-speedsync/.ashrc /tmp/home/root/
+cp -f /jffs/scripts/cake-speedsync/.profile /tmp/home/root/
