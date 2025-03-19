@@ -3,7 +3,7 @@
 cd /jffs/scripts || exit 1
 
 #Log start date and time
-date >> dyn-tc.log
+date >> cake-ss.log
 
 #Disable CAKE before speedtest
 tccake=$(tc qdisc | grep cake)
@@ -20,7 +20,7 @@ spdtstresjson=$(ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/con
 
 #Exit if speedtst fails
 if [ -z "$spdtstresjson" ]; then
-   echo "Speed test failed!" >> dyn-tc.log
+   echo "Speed test failed!" >> cake-ss.log
    exit 1
 fi
 
@@ -43,10 +43,10 @@ tc qdisc replace dev ifb4eth0 root cake bandwidth "${DLSpeedMbps}mbit" diffserv4
 tc qdisc replace dev eth0 root cake bandwidth "${ULSpeedMbps}mbit" diffserv4 dual-srchost nat no-ack-filter split-gso rtt 10ms noatm overhead 54 mpu 88
 
 #Log new cake settings
-tc qdisc | grep cake >> dyn-tc.log
+tc qdisc | grep cake >> cake-ss.log
 
 #Store logs for the last 7 updates only (tail -21)
-tail -21 dyn-tc.log > temp.log && mv temp.log dyn-tc.log && chmod 666 dyn-tc.log
+tail -21 cake-ss.log > temp.log && mv temp.log cake-ss.log && chmod 666 cake-ss.log
 
 echo "Download: ${DLSpeedMbps}Mbps Upload: ${ULSpeedMbps}Mbps"
 echo $(tc qdisc | grep cake)

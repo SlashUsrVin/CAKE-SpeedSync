@@ -22,8 +22,8 @@ css_status () {
 
    echo -e "\n  cake-speedsync:"
 
-   dyntclog=$(cat /jffs/scripts/dyn-tc.log | tail -3)
-   lastrun=$(cat /jffs/scripts/dyn-tc.log | tail -3 | head -1)
+   dyntclog=$(cat /jffs/scripts/cake-ss.log | tail -3)
+   lastrun=$(cat /jffs/scripts/cake-ss.log | tail -3 | head -1)
 
    uploadSpd=$(echo "$dyntclog" | grep -oE 'dev eth0 root .*' | grep -oE '[0-9]+Mbit')
    downloadSpd=$(echo "$dyntclog" | grep -oE 'dev ifb4eth0 root .*' | grep -oE '[0-9]+Mbit')
