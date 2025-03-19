@@ -53,9 +53,9 @@ css_set_max_qos () {
    for mode in "D" "A"; do
       for chain in "PREROUTING" "POSTROUTING" "OUTPUT"; do
          if [[ "$chain" == "OUTPUT" ]]; then
-            match = "sport"
+            match="sport"
          else
-            match = "dport"
+            match="dport"
          fi
 
          if [[ "$mode" == "D" ]]; then
