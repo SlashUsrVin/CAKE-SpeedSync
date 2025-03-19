@@ -1,1 +1,1 @@
-[ -f /jffs/scripts/cake-bw-sync/css-functions.sh ] && . /jffs/scripts/cake-bw-sync/css-functions.sh
+[ -f /jffs/scripts/cake-speedsync/css-functions.sh ] && . /jffs/scripts/cake-speedsync/css-functions.sh
