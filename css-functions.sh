@@ -2,7 +2,7 @@ css_status () {
    echo -e "\n[DSCP RULES - Force gaming ports to VOICE Tin"
    echo  "  Active DSCP Rule:"
 
-   ipt="$(iptables -t mangle -L -v -n | grep DSCP)"
+   ipt="$(iptables -t mangle -L --line-numbers | grep -E "Chain|DSCP")"
 
    css_check_null "$ipt" "WARNING: Rules not setup. If ISP is stripping DSCP tags, all packets will fall under besteffort. Run /jffs/scripts/services-start and check again"
 
