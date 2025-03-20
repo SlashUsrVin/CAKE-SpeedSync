@@ -41,13 +41,13 @@ css_check_null () {
 }
 
 css_pkt_qos () {
-   
    port=$1
+
    if [ -z "$2" ]; then
       dscptag="EF" #If $2 is blank set highest priority
    else
       dscptag="$2" #set priority manually (ie from highest to lowest: EF, CS5, CS0, CS1)
-   if
+   fi
    
    if [ -z "$3" ]; then
       proto="udp"
