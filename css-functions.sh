@@ -41,12 +41,13 @@ css_check_null () {
 }
 
 css_pkt_qos () {
-   port=$1
+   ip=$1
+   port=$2
 
-   if [ -z "$2" ]; then
+   if [ -z "$3" ]; then
       dscptag="EF" #If $2 is blank set highest priority
    else
-      case "$2" in
+      case "$3" in
          1) dscptag="EF" ;;  #Highest
          2) dscptag="CS5" ;; #High
          3) dscptag="CS0" ;; #Normal
@@ -55,27 +56,37 @@ css_pkt_qos () {
       esac
    fi
    
-   if [ -z "$3" ]; then
+   if [ -z "$4" ]; then
       proto="udp"
    else
-      proto="$3"
+      proto="$4"
    fi
 
-   cmd="iptables -t mangle -%s %s -p $proto --%s $port -j DSCP --set-dscp-class $dscptag"
+   #cmd="iptables -t mangle -%s %s -p $proto --%s $port -j DSCP --set-dscp-class $dscptag"
+   cmd="iptables -t mangle -%s %s -p $proto -%s $ip --%s $port -j DSCP --set-dscp-class $dscptag"
    
    #Remove first if existing then re-apply rule - prevent duplicate entries and cluttering iptables
    for mode in "D" "A"; do
       for chain in "PREROUTING" "POSTROUTING" "OUTPUT"; do
-         if [[ "$chain" == "OUTPUT" ]]; then
-            match="sport"
-         else
-            match="dport"
-         fi
+         case "$chain" in
+            PREROUTING) 
+               pmatch="dport"
+               imatch="d"
+               ;;
+            POSTROUTING)
+               pmatch="sport"
+               imatch="s"
+               ;;
+            OUTPUT)
+               pmatch="sport"
+               imatch="s"
+               ;;
+         esac
 
          if [[ "$mode" == "D" ]]; then
-            eval $(printf "$cmd 2>/dev/null" "$mode" "$chain" "$match")
+            eval $(printf "$cmd 2>/dev/null" "$mode" "$chain" "$imatch" "$pmatch")
          else
-            eval $(printf "$cmd" "$mode" "$chain" "$match")
+            eval $(printf "$cmd" "$mode" "$chain" "$imatch" "$pmatch")
          fi         
       done
    done
@@ -84,7 +95,7 @@ css_pkt_qos () {
    #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ && 0x2e' | grep -oE 'dport [0-9]+(\:[0-9]+)?' | grep -oE '[0-9]+(\:[0-9]+)?' > /jffs/scripts/cake-speedsync/qosports
    #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' > /jffs/scripts/cake-speedsync/qosports
    rm -f /jffs/scripts/cake-speedsync/qosports
-   iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' | while read -r xport xhextag xproto; do
+   iptables -t mangle -S | awk '/PREROUTING/ && /DSCP/ {print $4, $10, $NF, $6}' | while read -r xip xport xhextag xproto; do
       case "$xhextag" in
          0x2e) xtag="1";;
          0x28) xtag="2";;
@@ -92,6 +103,6 @@ css_pkt_qos () {
          0x08) xtag="4";;
          *) xtag="3";;
       esac
-      echo "$xport $xtag $xproto" >> /jffs/scripts/cake-speedsync/qosports; done
+      echo "$ip $xport $xtag $xproto" >> /jffs/scripts/cake-speedsync/qosports; done
    
 }
