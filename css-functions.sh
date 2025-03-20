@@ -92,8 +92,6 @@ css_pkt_qos () {
          0x08) xtag="CS1";;
          *) xtag="CS0";;
       esac
-      echo "$xport $xtag $xproto" >> /jffs/scripts/cake-speedsync/qosports
-      ; 
-   done
+      echo "$xport $xtag $xproto" >> /jffs/scripts/cake-speedsync/qosports; done
    
 }
