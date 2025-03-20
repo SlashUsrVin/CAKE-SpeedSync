@@ -43,7 +43,7 @@ dos2unix $TGT_DIR/.ashrc
 dos2unix $TGT_DIR/.profile
 
 #Finalize installation
-mv -f $TGT_DIR/cake-speedsync.sh $JFFS_DIR/cake-speedsync.sh
+#mv -f $TGT_DIR/cake-speedsync.sh $JFFS_DIR/cake-speedsync.sh
 [ -f $JFFS_DIR/services-start ] && mv -f $JFFS_DIR/services-start $TGT_DIR/$(date +"%Y%m%d%H%M%S")-services-start
 mv -f $TGT_DIR/services-start $JFFS_DIR/services-start
 cp -f $TGT_DIR/.ashrc /tmp/home/root/

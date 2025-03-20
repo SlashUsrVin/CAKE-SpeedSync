@@ -18,12 +18,12 @@ css_status () {
 
    tccake=$(tc qdisc | grep cake)
 
-   css_check_null "$tccake" "WARNING: CAKE is not currently active. Run services-start or cake-speedsync.sh from /jffs/scripts/"
+   css_check_null "$tccake" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh"
 
    echo -e "\n  cake-speedsync:"
 
-   dyntclog=$(cat /jffs/scripts/cake-ss.log | tail -3)
-   lastrun=$(cat /jffs/scripts/cake-ss.log | tail -3 | head -1)
+   dyntclog=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -3)
+   lastrun=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -3 | head -1)
 
    uploadSpd=$(echo "$dyntclog" | grep -oE 'dev eth0 root .*' | grep -oE '[0-9]+Mbit')
    downloadSpd=$(echo "$dyntclog" | grep -oE 'dev ifb4eth0 root .*' | grep -oE '[0-9]+Mbit')
@@ -40,14 +40,28 @@ css_check_null () {
    fi
 }
 
-css_set_max_qos () {
-   pri1="EF" #Highest
-   pri2="CS5" #High
-   pri3="CS0" #Normal
-   pri4="CS1" #Low
+css_pkt_qos () {
+   
    port=$1
-   dscptag="$pri1"   
-   cmd="iptables -t mangle -%s %s -p udp --%s $port -j DSCP --set-dscp-class $dscptag"
+   if [ -z "$2" ]; then
+      dscptag="EF" #If $2 is blank set highest priority
+   else
+      dscptag="$2" #set priority manually (ie from highest to lowest: EF, CS5, CS0, CS1)
+   if
+   
+   if [ -z "$3" ]; then
+      proto="udp"
+   else
+      proto="$3"
+   fi
+
+   if [ -z "$4" ]; then
+      comm="css_pkt_qos"
+   else
+      comm="$4"
+   fi
+
+   cmd="iptables -t mangle -%s %s -p $proto --%s $port -j DSCP --set-dscp-class $dscptag -m comment --comment $comm"
    
    #Remove first if existing then re-apply rule - prevent duplicate entries and cluttering iptables
    for mode in "D" "A"; do
@@ -67,5 +81,6 @@ css_set_max_qos () {
    done
 
    #Record ports for re-applying iptables on reboot
-   iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ && 0x2e' | grep -oE 'dport [0-9]+(\:[0-9]+)?' | grep -oE '[0-9]+(\:[0-9]+)?' > /jffs/scripts/cake-speedsync/qosports
+   #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ && 0x2e' | grep -oE 'dport [0-9]+(\:[0-9]+)?' | grep -oE '[0-9]+(\:[0-9]+)?' > /jffs/scripts/cake-speedsync/qosports
+   iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' > /jffs/scripts/cake-speedsync/qosports
 }

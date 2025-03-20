@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cd /jffs/scripts || exit 1
+cd /jffs/scripts/cake-speedsync || exit 1
 
 #Log start date and time
 date >> cake-ss.log
@@ -36,10 +36,9 @@ ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 
 #Re-apply CAKE
 #Download (ifb4eth0)
-#tc qdisc replace dev ifb4eth0 root cake bandwidth "${DLSpeedMbps}mbit" besteffort dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 84
-tc qdisc replace dev ifb4eth0 root cake bandwidth "${DLSpeedMbps}mbit" diffserv4 dual-dsthost nat wash ingress no-ack-filter split-gso rtt 10ms noatm overhead 54 mpu 88
+tc qdisc replace dev ifb4eth0 root cake bandwidth "${DLSpeedMbps}mbit" diffserv4 dual-dsthost nat no-ack-filter split-gso rtt 10ms noatm overhead 54 mpu 88
+
 #Upload (eth0)
-#tc qdisc replace dev eth0 root cake bandwidth "${ULSpeedMbps}mbit" besteffort dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 84
 tc qdisc replace dev eth0 root cake bandwidth "${ULSpeedMbps}mbit" diffserv4 dual-srchost nat no-ack-filter split-gso rtt 10ms noatm overhead 54 mpu 88
 
 #Log new cake settings
