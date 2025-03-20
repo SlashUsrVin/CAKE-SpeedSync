@@ -46,6 +46,13 @@ css_pkt_qos () {
    if [ -z "$2" ]; then
       dscptag="EF" #If $2 is blank set highest priority
    else
+      case $2
+         (1) dscptag="EF" ;;
+         (2) dscptag="CS5" ;;
+         (3) dscptag="CS0" ;;
+         (4) dscptag="CS1" ;;
+         (*) dscptag="EF" ;;
+      esac
       dscptag="$2" #set priority manually (ie from highest to lowest: EF, CS5, CS0, CS1)
    fi
    
@@ -76,5 +83,21 @@ css_pkt_qos () {
 
    #Record ports for re-applying iptables on reboot
    #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ && 0x2e' | grep -oE 'dport [0-9]+(\:[0-9]+)?' | grep -oE '[0-9]+(\:[0-9]+)?' > /jffs/scripts/cake-speedsync/qosports
-   iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' > /jffs/scripts/cake-speedsync/qosports
+   #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' > /jffs/scripts/cake-speedsync/qosports
+   rm -f /jffs/scripts/cake-speedsync/qosports
+   for extractparm in iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}'; do
+      xport=$(awk 'print {$1}' extractparm)
+      xhextag=$(awk 'print {$2}' extractparm)
+      xproto=$(awk 'print {$3}' extractparm)
+
+      case $xhextag
+         (0x2e) xtag="EF";;
+         (0x28) xtag="CS5";;
+         (0x00) xtag="CS0";;
+         (0x08) xtag="CS1";;
+         (*) xtag="CS0";;
+      esac
+      echo "$xport $xtag $xproto" >> /jffs/scripts/cake-speedsync/qosports
+   done
+   
 }
