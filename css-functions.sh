@@ -83,8 +83,8 @@ css_pkt_qos () {
    #Record ports for re-applying iptables on reboot
    #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ && 0x2e' | grep -oE 'dport [0-9]+(\:[0-9]+)?' | grep -oE '[0-9]+(\:[0-9]+)?' > /jffs/scripts/cake-speedsync/qosports
    #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' > /jffs/scripts/cake-speedsync/qosports
-   rm -f /jffs/scripts/cake-speedsync/qosports
-   iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' | while read -r xport xhextag xproto; do
+   iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' > /jffs/scripts/cake-speedsync/qosports
+   cat /jffs/scripts/cake-speedsync/qosports | while read -r xport xhextag xproto; do
       case "$xhextag" in
          0x2e) xtag="EF";;
          0x28) xtag="CS5";;
