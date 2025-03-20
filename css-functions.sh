@@ -67,17 +67,13 @@ css_pkt_qos () {
    
    #Remove first if existing then re-apply rule - prevent duplicate entries and cluttering iptables
    for mode in "D" "A"; do
-      for chain in "PREROUTING" "POSTROUTING" "OUTPUT"; do
+      for chain in "FORWARD" "POSTROUTING"; do
          case "$chain" in
-            PREROUTING) 
+            FORWARD) 
                pmatch="dport"
                imatch="d"
                ;;
             POSTROUTING)
-               pmatch="sport"
-               imatch="s"
-               ;;
-            OUTPUT)
                pmatch="sport"
                imatch="s"
                ;;
