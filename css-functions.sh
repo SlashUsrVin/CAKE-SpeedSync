@@ -86,11 +86,11 @@ css_pkt_qos () {
    rm -f /jffs/scripts/cake-speedsync/qosports
    iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' | while read -r xport xhextag xproto; do
       case "$xhextag" in
-         0x2e) xtag="EF";;
-         0x28) xtag="CS5";;
-         0x00) xtag="CS0";;
-         0x08) xtag="CS1";;
-         *) xtag="CS0";;
+         0x2e) xtag="1";;
+         0x28) xtag="2";;
+         0x00) xtag="3";;
+         0x08) xtag="4";;
+         *) xtag="3";;
       esac
       echo "$xport $xtag $xproto" >> /jffs/scripts/cake-speedsync/qosports; done
    
