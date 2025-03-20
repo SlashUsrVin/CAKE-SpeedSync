@@ -55,13 +55,7 @@ css_pkt_qos () {
       proto="$3"
    fi
 
-   if [ -z "$4" ]; then
-      comm="css_pkt_qos"
-   else
-      comm="$4"
-   fi
-
-   cmd="iptables -t mangle -%s %s -p $proto --%s $port -j DSCP --set-dscp-class $dscptag -m comment --comment $comm"
+   cmd="iptables -t mangle -%s %s -p $proto --%s $port -j DSCP --set-dscp-class $dscptag"
    
    #Remove first if existing then re-apply rule - prevent duplicate entries and cluttering iptables
    for mode in "D" "A"; do
