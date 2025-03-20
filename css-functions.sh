@@ -46,7 +46,7 @@ css_pkt_qos () {
    if [ -z "$2" ]; then
       dscptag="EF" #If $2 is blank set highest priority
    else
-      case $2
+      case "$2" in
          (1) dscptag="EF" ;;
          (2) dscptag="CS5" ;;
          (3) dscptag="CS0" ;;
@@ -90,7 +90,7 @@ css_pkt_qos () {
       xhextag=$(awk 'print {$2}' extractparm)
       xproto=$(awk 'print {$3}' extractparm)
 
-      case $xhextag
+      case "$xhextag" in
          (0x2e) xtag="EF";;
          (0x28) xtag="CS5";;
          (0x00) xtag="CS0";;
