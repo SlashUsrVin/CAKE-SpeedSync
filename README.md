@@ -13,8 +13,9 @@ By default CAKE uses diffserv3 for QoS mode when enabled via the web ui. cake-sp
 
 An optional function (css_pkt_qos) is also provided to force packets to VOICE Tin using iptables. This is only necessary if your ISP (like mine) strips DSCP tags which will cause all packets to fall under besteffort (normal priority). If that is the case, this fucntion will allow you to force packets to be tagged accordingly. Rules applied using css_pkt_qos will be auto re-applied on reboot.
     --How to run css_pkt_qos: 
-    --css_pkt_qos <port or port:port> <priority> <protocol> <comment>
-    --css_pkt_qos 50000:70000 EF udp "game packets"
+    --css_pkt_qos <IP> <port or port:port> <priority> <protocol> 
+    --css_pkt_qos 192.168.1.10 50000:70000 1 udp
+    -- OR simply css_pkt_qos 192.168.1.10 50000:70000 --> This is the short version, priority will default to 1 and protocol to udp
 
 Speedtest and dynamic updates will occur every 2 hours from 7:00 AM to 11:00 PM feel free to update the cron entry in /jffs/scripts/services-start after installation. Router config resets to default after reboot wiping crontab, tcqdisc and iptable rules (mangle). By updating services-start the config updated by cake-speedsync are re-applied on reboot (waits 30 seconds after reboot before re-applying)
 
