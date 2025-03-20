@@ -84,6 +84,7 @@ css_pkt_qos () {
    #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ && 0x2e' | grep -oE 'dport [0-9]+(\:[0-9]+)?' | grep -oE '[0-9]+(\:[0-9]+)?' > /jffs/scripts/cake-speedsync/qosports
    #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' > /jffs/scripts/cake-speedsync/qosports
    rm -f /jffs/scripts/cake-speedsync/qosports
+   iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' > /jffs/scripts/cake-speedsync/qosports.tmp
    while read -r xport xhextag xproto; do
       case "$xhextag" in
          0x2e) xtag="EF";;
@@ -93,6 +94,7 @@ css_pkt_qos () {
          *) xtag="CS0";;
       esac
       echo "$xport $xtag $xproto" >> /jffs/scripts/cake-speedsync/qosports
-   done < <(iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}')
+   done < /jffs/scripts/cake-speedsync/qosports.tmp
+   rm -f /jffs/scripts/cake-speedsync/qosports.tmp
    
 }
