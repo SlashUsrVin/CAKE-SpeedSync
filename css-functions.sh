@@ -10,17 +10,28 @@ css_initialize() {
    cru a cake-speedsync "0 7-23/2 * * * /jffs/scripts/cake-speedsync/cake-speedsync.sh"   
 }
 
-css_preserv_cake () {
-# sed -E "s/\b[0-9]+[a-zA-Z]{3,4}/${2}mbit/") #\b whole word boundary
-cd /jffs/scripts/cake-speedsync/ || exit 1
+css_preserve_cake () {
+   
+   css_cake_cmd #Save current cake settings. Thes settings will be preserve. Only the bandwidth and rtt will be updated later
 
-#construct command for eth0
-cmd=$(tc qdisc | awk '/dev eth0/ && /bandwidth/' | grep -oE 'dev*.*') 
-echo $cmd > cake.cmd
+   if [ "$(wc -c < test.cmd)" -eq 0]; then
+      #Cake is disabled. Enable with default value. Speed will update once cake-speedsync runs
+      tc qdisc replace dev eth0 root cake bandwidth 1000mbit diffserv3 dual-srchost nat nowash no-ack-filter split-gso rtt 100ms noatm overhead 34 mpu 88
+      tc qdisc replace dev ifb4eth0 root cake bandwidth 1000mbit besteffort dual-dsthost nat wash ingress no-ack-filter split-gso rtt 100ms noatm overhead 34 mpu 88
+      css_cake_cmd
+   fi
+}
 
-#construct command for ifb4eth0
-cmd=$(tc qdisc | awk '/dev ifb4eth0/ && /bandwidth/' | grep -oE 'dev*.*')
-echo $cmd >> cake.cmd
+css_cake_cmd() {
+   cd /jffs/scripts/cake-speedsync/ || exit 1
+
+   #construct command for eth0
+   cmd=$(tc qdisc | awk '/dev eth0/ && /bandwidth/' | grep -oE 'dev*.*') 
+   echo $cmd > cake.cmd
+
+   #construct command for ifb4eth0
+   cmd=$(tc qdisc | awk '/dev ifb4eth0/ && /bandwidth/' | grep -oE 'dev*.*')
+   echo $cmd >> cake.cmd   
 }
 
 css_status () {

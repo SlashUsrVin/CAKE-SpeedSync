@@ -5,7 +5,7 @@
 
 cd /jffs/scripts/cake-speedsync || exit 1
 
-css_preserv_cake
+css_preserve_cake
 
 #Log start date and time
 date >> cake-ss.log
@@ -39,12 +39,25 @@ ULSpeedbps=$(echo "$spdtstresjson" | grep -oE '"upload":\{"bandwidth":[0-9]+' | 
 DLSpeedMbps=$(((DLSpeedbps * 8) / 1000000))
 ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 
+#RTT - Base rtt from dns latency
+dlatency=$(ping -c 10 8.8.8.8 | grep -oE 'time\=[0-9]+(.[0-9]*)?\sms' | grep -oE '[0-9]+(.[0-9]*)?')
+rttmedian=$(echo "$dlatency" | awk 'NR==6')
+rttwhole=$(echo "$rttmedian" | sed -E 's/\.[0-9]+//')
+case $(( $rttwhole / 10 )) in
+   0) rtt=10;;
+   1) rtt=20;;
+   2) rtt=30;;
+   3) rtt=40;;
+   4) rtt=50;;
+   *) rtt=100;;
+esac
+
 #Re-apply CAKE
 while read -r line; do
    #retrieve base command and update rtt to 20ms (default cake rtt (from web ui) is 100ms)
    intfc=$(echo "$line" | awk '{print $2}')
    basecmd=$(echo "$line" | grep -oE 'bandwidth.*') 
-   updated_basecmd=$(echo "$basecmd" | sed -E "s/\brtt\s[0-9]+ms/rtt 20ms/")
+   updated_basecmd=$(echo "$basecmd" | sed -E "s/\brtt\s[0-9]+ms/rtt ${rtt}ms/")
    if [[ "$intfc" == "eth0" ]]; then
       #update bandwidth
       cmd=$(echo "$updated_basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}/bandwidth ${ULSpeedMbps}mbit/") #\b whole word boundary)
