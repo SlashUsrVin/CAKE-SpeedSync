@@ -1,20 +1,11 @@
 #!/bin/sh
 sleep 30
 
+#Source cake-speedsync related functions
 . /jffs/scripts/cake-speedsync/css-functions.sh
-#Re-apply rules - Force gaming ports to VOICE Tin for CAKE QoS
-awk '{print $1, $2, $3, $4}' /jffs/scripts/cake-speedsync/qosports 2>/dev/null | while read -r ip port tag protocol; do
-   css_pkt_qos $ip $port $tag $protocol; done 
 
-#Run speedtest and apply cake settings
-cd /jffs/scripts/cake-speedsync || exit 1
-./cake-speedsync.sh
-
-#Re-adjust cake settings every 2 hours past 7 am
-#Delete cron job to avoid duplicate
-cru d cake-speedsync
-#Re-add cron job
-cru a cake-speedsync "0 7-23/2 * * * /jffs/scripts/cake-speedsync/cake-speedsync.sh"
+#Re-apply cake-speedsync and manual iptable settings
+css_initialize
 
 #Re-apply .ashrc and .profile
 cp -f /jffs/scripts/cake-speedsync/.ashrc /tmp/home/root/

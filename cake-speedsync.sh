@@ -1,6 +1,11 @@
 #!/bin/sh
 
+#Source cake-speedsync related functions
+. /jffs/scripts/cake-speedsync/css-functions.sh
+
 cd /jffs/scripts/cake-speedsync || exit 1
+
+css_preserv_cake
 
 #Log start date and time
 date >> cake-ss.log
@@ -35,11 +40,17 @@ DLSpeedMbps=$(((DLSpeedbps * 8) / 1000000))
 ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 
 #Re-apply CAKE
-#Download (ifb4eth0)
-tc qdisc replace dev ifb4eth0 root cake bandwidth "${DLSpeedMbps}mbit" diffserv4 dual-dsthost nat no-ack-filter split-gso rtt 10ms noatm overhead 54 mpu 88
-
-#Upload (eth0)
-tc qdisc replace dev eth0 root cake bandwidth "${ULSpeedMbps}mbit" diffserv4 dual-srchost nat no-ack-filter split-gso rtt 10ms noatm overhead 54 mpu 88
+awk '{print $0, $2}' /jffs/scripts/cake-speedsync/cake.cmd 2>/dev/null | while read -r line intfc; do
+   #retrieve base command and update rtt to 20ms (default cake rtt (from web ui) is 100ms)
+   basecmd=$(echo "$line" | grep -oE 'bandwidth.*' | sed -E "s/\brtt\s[0-9]+ms/rtt 20ms/")
+   if [[ "$intfc" == "eth0" ]]; then
+      #update bandwidth
+      cmd=$(echo "$basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}/bandwidth ${ULSpeedMbps}mbit/") #\b whole word boundary)
+   else
+      #update bandwidth
+      cmd=$(echo "$basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}/bandwidth ${DLSpeedMbps}mbit/") #\b whole word boundary)
+   fi
+   eval $(echo "tc qdisc replace dev $intfc root cake $cmd"); done 
 
 #Log new cake settings
 tc qdisc | grep cake >> cake-ss.log

@@ -1,3 +1,28 @@
+css_initialize() {
+   #Run speedtest and apply cake settings
+   /jffs/scripts/cake-speedsync/cake-speedsync.sh
+
+   #Delete cron job to avoid duplicate
+   cru d cake-speedsync
+
+   #Re-add cron job
+   #Run every 2 hours from 7:00 AM to 11:00 PM
+   cru a cake-speedsync "0 7-23/2 * * * /jffs/scripts/cake-speedsync/cake-speedsync.sh"   
+}
+
+css_preserv_cake () {
+# sed -E "s/\b[0-9]+[a-zA-Z]{3,4}/${2}mbit/") #\b whole word boundary
+cd /jffs/scripts/cake-speedsync/ || exit 1
+
+#construct command for eth0
+cmd=$(tc qdisc | awk '/dev eth0/ && /bandwidth/' | grep -oE 'dev*.*') 
+echo $cmd > cake.cmd
+
+#construct command for ifb4eth0
+cmd=$(tc qdisc | awk '/dev ifb4eth0/ && /bandwidth/' | grep -oE 'dev*.*')
+echo $cmd >> cake.cmd
+}
+
 css_status () {
    echo -e "\n[DSCP RULES - Force gaming ports to VOICE Tin"
    echo  "  Active DSCP Rule:"
@@ -40,6 +65,30 @@ css_check_null () {
    fi
 }
 
+css_qos_udp () {
+   $proto="udp"
+   $port=$1
+   $prio=$2
+   $ip=$3
+
+   css_pkt_qos $ip $port $prio $proto
+}
+
+css_qos_tcp () {
+   $proto="tcp"
+   $port=$1
+   $prio=$2
+   $ip=$3
+
+   css_pkt_qos $ip $port $prio $proto   
+}
+
+css_qos_refresh () {
+   awk '{print $1, $2, $3, $4}' /jffs/scripts/cake-speedsync/qosports 2>/dev/null | while read -r ip port tag protocol; do
+   css_pkt_qos $ip $port $tag $protocol; done 
+
+}
+
 css_pkt_qos () {
    ip=$1
    port=$2
@@ -62,7 +111,6 @@ css_pkt_qos () {
       proto="$4"
    fi
 
-   #cmd="iptables -t mangle -%s %s -p $proto --%s $port -j DSCP --set-dscp-class $dscptag"
    cmd="iptables -t mangle -%s %s -p $proto -%s $ip --%s $port -j DSCP --set-dscp-class $dscptag"
    
    #Remove first if existing then re-apply rule - prevent duplicate entries and cluttering iptables
@@ -88,8 +136,6 @@ css_pkt_qos () {
    done
 
    #Record ports for re-applying iptables on reboot
-   #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ && 0x2e' | grep -oE 'dport [0-9]+(\:[0-9]+)?' | grep -oE '[0-9]+(\:[0-9]+)?' > /jffs/scripts/cake-speedsync/qosports
-   #iptables -t mangle -S | awk '/POSTROUTING/ && /DSCP/ {print $8, $NF, $4}' > /jffs/scripts/cake-speedsync/qosports
    rm -f /jffs/scripts/cake-speedsync/qosports
    iptables -t mangle -S | awk '/PREROUTING/ && /DSCP/ {print $4, $10, $NF, $6}' | while read -r xip xport xhextag xproto; do
       case "$xhextag" in
