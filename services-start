@@ -4,9 +4,5 @@ sleep 30
 #Source cake-speedsync related functions
 . /jffs/scripts/cake-speedsync/css-functions.sh
 
-#Re-apply cake-speedsync and manual iptable settings
+#Perform cake-speedsync
 css_initialize
-
-#Re-apply .ashrc and .profile
-cp -f /jffs/scripts/cake-speedsync/.ashrc /tmp/home/root/
-cp -f /jffs/scripts/cake-speedsync/.profile /tmp/home/root/
