@@ -42,13 +42,14 @@ ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 #Re-apply CAKE
 awk '{print $0, $2}' /jffs/scripts/cake-speedsync/cake.cmd 2>/dev/null | while read -r line intfc; do
    #retrieve base command and update rtt to 20ms (default cake rtt (from web ui) is 100ms)
-   basecmd=$(echo "$line" | grep -oE 'bandwidth.*' | sed -E "s/\brtt\s[0-9]+ms/rtt 20ms/")
+   basecmd=$(echo "$line" | grep -oE 'bandwidth.*') 
+   updated_basecmd=$(echo "$basecmd" | sed -E "s/\brtt\s[0-9]+ms/rtt 20ms/")
    if [[ "$intfc" == "eth0" ]]; then
       #update bandwidth
-      cmd=$(echo "$basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}/bandwidth ${ULSpeedMbps}mbit/") #\b whole word boundary)
+      cmd=$(echo "$updated_basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}/bandwidth ${ULSpeedMbps}mbit/") #\b whole word boundary)
    else
       #update bandwidth
-      cmd=$(echo "$basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}/bandwidth ${DLSpeedMbps}mbit/") #\b whole word boundary)
+      cmd=$(echo "$updated_basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}/bandwidth ${DLSpeedMbps}mbit/") #\b whole word boundary)
    fi
    eval $(echo "tc qdisc replace dev $intfc root cake $cmd"); done 
 
