@@ -46,8 +46,8 @@ dos2unix $TGT_DIR/.profile
 #mv -f $TGT_DIR/cake-speedsync.sh $JFFS_DIR/cake-speedsync.sh
 [ -f $JFFS_DIR/services-start ] && mv -f $JFFS_DIR/services-start $TGT_DIR/$(date +"%Y%m%d%H%M%S")-services-start
 mv -f $TGT_DIR/services-start $JFFS_DIR/services-start
-cp -f $TGT_DIR/.ashrc /tmp/home/root/
-cp -f $TGT_DIR/.profile /tmp/home/root/
+#cp -f $TGT_DIR/.ashrc /tmp/home/root/
+#cp -f $TGT_DIR/.profile /tmp/home/root/
 
 [ -f /jffs/scripts/cake-speedsync/css-functions.sh ] && . /jffs/scripts/cake-speedsync/css-functions.sh
 

@@ -6,6 +6,9 @@ Updates CAKE QoS bandwidth and latency based of the built in Ookla SpeedTest (CL
 1. ASUS Router running on the latest MERLIN firmware. (https://sourceforge.net/projects/asuswrt-merlin/files/)  
 2. Must have custom script support and built in CAKE QoS feature.  
 
+### __WARNING:__  
+1. During installation, /jffs/scripts/services-start will be replaced. If you have added any custom commands, you can find a backup of the original file in /jffs/scripts/cake-speedsync/. 
+
 ### __INSTALLATION:__  
 1. Login to your ASUS Router Web UI  
 2. Enable JFFS custom scripts and configs (Administration > System)  
