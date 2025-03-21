@@ -74,4 +74,3 @@ tc qdisc | grep cake >> cake-ss.log
 tail -21 cake-ss.log > temp.log && mv temp.log cake-ss.log && chmod 666 cake-ss.log
 
 echo "Download: ${DLSpeedMbps}Mbps Upload: ${ULSpeedMbps}Mbps"
-echo $(tc qdisc | grep cake)
