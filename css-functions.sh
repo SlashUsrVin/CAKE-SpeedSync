@@ -14,7 +14,7 @@ css_preserve_cake () {
    
    css_cake_cmd #Save current cake settings. Thes settings will be preserve. Only the bandwidth and rtt will be updated later
 
-   if [ "$(wc -c < cake.cmd)" -eq 0]; then
+   if [ "$(wc -c < cake.cmd)" -eq 0 ]; then
       #Cake is disabled. Enable with default value. Speed will update once cake-speedsync runs
       tc qdisc replace dev eth0 root cake bandwidth 1000mbit diffserv3 dual-srchost nat nowash no-ack-filter split-gso rtt 100ms noatm overhead 34 mpu 88
       tc qdisc replace dev ifb4eth0 root cake bandwidth 1000mbit besteffort dual-dsthost nat wash ingress no-ack-filter split-gso rtt 100ms noatm overhead 34 mpu 88
