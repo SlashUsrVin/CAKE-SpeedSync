@@ -35,7 +35,7 @@ css_cake_cmd() {
 }
 
 css_status () {
-   echo -e "\n[DSCP RULES - Force gaming ports to VOICE Tin"
+   echo -e "\n[DSCP RULES]"
    echo  "  Active DSCP Rule:"
 
    ipt="$(iptables -t mangle -L --line-numbers | grep -E "Chain|DSCP")"
