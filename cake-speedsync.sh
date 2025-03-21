@@ -40,8 +40,9 @@ DLSpeedMbps=$(((DLSpeedbps * 8) / 1000000))
 ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 
 #Re-apply CAKE
-awk '{print $0, $2}' /jffs/scripts/cake-speedsync/cake.cmd 2>/dev/null | while read -r line intfc; do
+while read -r line; do
    #retrieve base command and update rtt to 20ms (default cake rtt (from web ui) is 100ms)
+   intfc=$(echo "$line" | awk '{print $2}')
    basecmd=$(echo "$line" | grep -oE 'bandwidth.*') 
    updated_basecmd=$(echo "$basecmd" | sed -E "s/\brtt\s[0-9]+ms/rtt 20ms/")
    if [[ "$intfc" == "eth0" ]]; then
@@ -51,7 +52,7 @@ awk '{print $0, $2}' /jffs/scripts/cake-speedsync/cake.cmd 2>/dev/null | while r
       #update bandwidth
       cmd=$(echo "$updated_basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}/bandwidth ${DLSpeedMbps}mbit/") #\b whole word boundary)
    fi
-   eval $(echo "tc qdisc replace dev $intfc root cake $cmd"); done 
+   eval $(echo "tc qdisc replace dev $intfc root cake $cmd"); done < cake.cmd
 
 #Log new cake settings
 tc qdisc | grep cake >> cake-ss.log

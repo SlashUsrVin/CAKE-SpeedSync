@@ -53,3 +53,4 @@ cp -f $TGT_DIR/.profile /tmp/home/root/
 
 echo -e "\nInstallation Complete!\n\nManually reboot your router.\n\nEvery time you log back in (ssh) you should see the status of what was changed or you can run css_status manually"
 echo -e "\n\n"
+cd $TGT_DIR
