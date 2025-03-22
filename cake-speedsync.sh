@@ -43,7 +43,7 @@ else
 fi
 
 eRep="0"
-if [ "$qd_eSCH" != "$cf_eSCH" ]; then
+if [ "$qd_eSCH" != "$cf_eSCH" ] && [ -n "$cf_eSCH" ]; then
    eRep="1"
    eScheme="$cf_eSCH"
 else
@@ -51,7 +51,7 @@ else
 fi
 
 iRep="0"
-if [ "$qd_iSCH" != "$cf_iSCH" ]; then
+if [ "$qd_iSCH" != "$cf_iSCH" ] && [ -n "$cf_iSCH" ]; then
    iRep="1"
    iScheme="$cf_iSCH"
 else
