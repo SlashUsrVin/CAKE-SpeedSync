@@ -13,16 +13,25 @@ css_initialize() {
 css_enable_default_cake () {
    eScheme="$1"
    iScheme="$2"
+   css_enable_cake_eth0 "$eScheme"
+   css_enable_cake_ifb4eth0 "$iScheme"
+}
+
+css_enable_cake_eth0() {
+   eScheme="$1"
    if [ -z "$eScheme" ]; then
       eScheme="diffserv4"
    fi
+   #Enable with default value. Speed and Latency will update once cake-speedsync runs
+   tc qdisc replace dev eth0 root cake bandwidth 2gbit ${eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
+}
 
+css_enable_cake_ifb4eth0() {
+   iScheme="$2"
    if [ -z "$iScheme" ]; then
       iScheme="diffserv3"
    fi
-
    #Enable with default value. Speed and Latency will update once cake-speedsync runs
-   tc qdisc replace dev eth0 root cake bandwidth 2gbit ${eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
    tc qdisc replace dev ifb4eth0 root cake bandwidth 2gbit ${iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
 }
 
@@ -33,17 +42,11 @@ css_update_cake () {
 }
 
 css_retrieve_cake_qdisc () {
-   #Get current settings
    intfc=$1
    if [ -z "$1" ]; then
       echo ""
    else
       tcqparm=$(tc qdisc show dev "$intfc" root)
-      
-      if [ -z "$tcqparm" ]; then
-         css_enable_default_cake
-      fi
-
       tcqparmpart=$(echo "$tcqparm" | grep -oE 'bandwidth\s(unlimited)?([0-9]+[a-zA-Z]{3,4})?\s[a-zA-Z]+([0-9]+)?')
       spd=$(echo "$tcqparmpart" | awk '{print $1, $2}')
       sch=$(echo "$tcqparmpart" | awk '{print $3}')

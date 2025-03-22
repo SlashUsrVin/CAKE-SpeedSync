@@ -8,7 +8,17 @@ date >> cake-ss.log
 
 cd /jffs/scripts/cake-speedsync || exit 1
    
-#Retrieve current CAKE setting. If CAKE is disabled, enable it.
+#If CAKE is disabled, enable it.
+qdisc=$(tc qdisc show dev eth0 root)
+if [ -n "$qdisc" ]; then
+   css_enable_cake_eth0
+fi
+qdisc=$(tc qdisc show dev ifb4eth0 root)
+if [ -n "$qdisc" ]; then
+   css_enable_cake_ifb4eth0
+fi
+
+#Retrieve current CAKE setting. 
 cake_eth0=$(css_retrieve_cake_qdisc "eth0")
 cake_ifb4eth0=$(css_retrieve_cake_qdisc "ifb4eth0")
 
@@ -24,18 +34,18 @@ qd_iRTT=$(echo "$cake_ifb4eth0" | awk '{print $4, $5}')
 qd_iMPU=$(echo "$cake_ifb4eth0" | awk '{print $6, $7}')
 qd_iOVH=$(echo "$cake_ifb4eth0" | awk '{print $8, $9}')   
 
-#Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme in the cfg file (i.e diffserv4, diffserv3,etc)
+#Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
 if [ -f "cake.cfg" ]; then
    while read -r line; do
       intf=$(echo "$line" | awk '{print $1}')
       cfg=$(echo "$line" | awk '{print $2}')
 
       if [[ "$intfc" == "eth0" ]]; then
-         cf_eSCH=$cfg
+         cf_eSCH="$cfg"
       fi
 
       if [[ "$intfc" == "ifb4eth0" ]]; then
-         cf_iSCH=$cfg
+         cf_iSCH="$cfg"
       fi; done < cake.cfg
 else
    cf_eSCH="diffserv4" #default eth0 to diffserv4
@@ -58,13 +68,6 @@ else
    iScheme="$qd_iSCH"   
 fi
 
-#Check if CAKE is active
-tccake=$(tc qdisc | grep cake)
-if [ -z "$tccake" ]; then
-   #Enable CAKE with default settings
-   css_enable_default_cake "$eScheme" "$iScheme"
-fi
-
 #Increase bandwidth temporarily to avoid throttling
 #Default settings is already set to 2gbit but if cake is already active this will ensure the bandwidth is set very high before the speed test
 tc qdisc change dev ifb4eth0 root cake bandwidth 2gbit #Download
@@ -73,21 +76,16 @@ tc qdisc change dev eth0 root cake bandwidth 2gbit     #Upload
 #Run Speedtest and generate result in json format
 spdtstresjson=$(ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json)
 
-#Restore previous CAKE settings and Exit if speedtest fails
+#Restore previous CAKE settings and exit if speedtest fails
 if [ -z "$spdtstresjson" ]; then
    echo "Speed test failed!" >> cake-ss.log
    
-   if [ -n "$tccake" ]; then
-      #Restore previous CAKE settings
-      css_update_cake $eScheme $qd_eSPD
-      css_update_cake $eScheme $qd_eRTT
-      css_update_cake $eScheme $qd_eOVH
-      css_update_cake $eScheme $qd_eMPU
-      css_update_cake $iScheme $qd_iSPD
-      css_update_cake $iScheme $qd_iRTT
-      css_update_cake $iScheme $qd_iOVH
-      css_update_cake $iScheme $qd_iMPU      
-   fi
+   #Restore previous CAKE settings
+   css_update_cake $eScheme $qd_eSPD
+   css_update_cake $eScheme $qd_eRTT
+
+   css_update_cake $iScheme $qd_iSPD
+   css_update_cake $iScheme $qd_iRTT
 
    exit 1
 fi
