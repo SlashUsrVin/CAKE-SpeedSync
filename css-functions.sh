@@ -29,7 +29,7 @@ css_enable_default_cake () {
 css_update_cake () {
    cake_intf="$1"
    cake_parm="$2"
-   tc qdisc change dev "${cake_intf}" root cake "${cake_parm}"
+   tc qdisc change dev ${cake_intf} root cake ${cake_parm}
 }
 
 css_retrieve_cake_qdisc () {
