@@ -22,8 +22,8 @@ css_enable_default_cake () {
    fi
 
    #Enable with default value. Speed and Latency will update once cake-speedsync runs
-   tc qdisc replace dev eth0 root cake bandwidth unlimited ${eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
-   tc qdisc replace dev ifb4eth0 root cake bandwidth unlimited ${iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
+   tc qdisc replace dev eth0 root cake bandwidth 2gbit ${eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
+   tc qdisc replace dev ifb4eth0 root cake bandwidth 2gbit ${iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
 }
 
 css_update_cake () {

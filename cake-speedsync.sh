@@ -8,7 +8,7 @@ date >> cake-ss.log
 
 cd /jffs/scripts/cake-speedsync || exit 1
    
-#Retrieve current CAKE setting
+#Retrieve current CAKE setting. If CAKE is disabled, enable it.
 cake_eth0=$(css_retrieve_cake_qdisc "eth0")
 cake_ifb4eth0=$(css_retrieve_cake_qdisc "ifb4eth0")
 
@@ -66,9 +66,9 @@ if [ -z "$tccake" ]; then
 fi
 
 #Increase bandwidth temporarily to avoid throttling
-#Default settings is already set to unlimited but if cake is already active this will ensure the bandwidth is updated to unlimited before the speed test
-tc qdisc change dev ifb4eth0 root cake bandwidth unlimited #Download
-tc qdisc change dev eth0 root cake bandwidth unlimited     #Upload
+#Default settings is already set to 2gbit but if cake is already active this will ensure the bandwidth is set very high before the speed test
+tc qdisc change dev ifb4eth0 root cake bandwidth 2gbit #Download
+tc qdisc change dev eth0 root cake bandwidth 2gbit     #Upload
 
 #Run Speedtest and generate result in json format
 spdtstresjson=$(ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json)
@@ -127,4 +127,4 @@ tc qdisc | grep cake >> cake-ss.log
 #Store logs for the last 7 updates only (tail -21)
 tail -21 cake-ss.log > temp.log && mv temp.log cake-ss.log && chmod 666 cake-ss.log
 
-echo -e "Download Speed: ${DLSpeedMbps}Mbps\nUpload: ${ULSpeedMbps}Mbps\nGoogle Ping Time: ${rtt}"
+echo -e "Download Speed: ${DLSpeedMbps}Mbps\nUpload: ${ULSpeedMbps}Mbps\n RTT: ${rtt}"
