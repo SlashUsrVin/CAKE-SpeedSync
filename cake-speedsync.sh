@@ -81,11 +81,11 @@ if [ -z "$spdtstresjson" ]; then
    echo "Speed test failed!" >> cake-ss.log
    
    #Restore previous CAKE settings
-   css_update_cake $eScheme $qd_eSPD
-   css_update_cake $eScheme $qd_eRTT
+   css_update_cake "eth0" "$qd_eSPD"
+   css_update_cake "eth0" "$qd_eRTT"
 
-   css_update_cake $iScheme $qd_iSPD
-   css_update_cake $iScheme $qd_iRTT
+   css_update_cake "ifb4eth0" "$qd_iSPD"
+   css_update_cake "ifb4eth0" "$qd_iRTT"
 
    exit 1
 fi
@@ -99,8 +99,8 @@ DLSpeedMbps=$(((DLSpeedbps * 8) / 1000000))
 ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 
 #Update bandwidth base from speedtest. This is need before the latency check.
-css_update_cake "$eScheme" "bandwidth ${ULSpeedMbps}mbit"
-css_update_cake "$iScheme" "bandwidth ${DLSpeedMbps}mbit"
+css_update_cake "eth0" "bandwidth ${ULSpeedMbps}mbit"
+css_update_cake "ifb4eth0" "bandwidth ${DLSpeedMbps}mbit"
 
 #RTT - Base rtt from dns latency
 dlatency=$(ping -c 10 8.8.8.8 | grep -oE 'time\=[0-9]+(.[0-9]*)?\sms' | grep -oE '[0-9]+(.[0-9]*)?')
@@ -116,8 +116,8 @@ case $(( $rttwhole / 10 )) in
 esac
 
 #Update rtt base from ping response time from Google (8.8.8.8)
-css_update_cake "$eScheme" "rtt ${rtt}ms"
-css_update_cake "$iScheme" "rtt ${rtt}ms"
+css_update_cake "eth0" "rtt ${rtt}ms"
+css_update_cake "ifb4eth0" "rtt ${rtt}ms"
 
 #Log new cake settings
 tc qdisc | grep cake >> cake-ss.log
