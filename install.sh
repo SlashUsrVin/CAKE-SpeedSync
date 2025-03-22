@@ -25,6 +25,7 @@ mkdir -p "$TGT_DIR"
 fetch_file ".ashrc"
 fetch_file ".profile"
 fetch_file "cake-speedsync.sh"
+fetch_file "cake.cfg"
 fetch_file "services-start"
 fetch_file "css-functions.sh"
 
@@ -37,6 +38,7 @@ chmod +x $TGT_DIR/.profile
 
 #Convert line breaks to unix line breaks
 dos2unix $TGT_DIR/cake-speedsync.sh
+dos2unix $TGT_DIR/cake.cfg
 dos2unix $TGT_DIR/services-start
 dos2unix $TGT_DIR/css-functions.sh
 dos2unix $TGT_DIR/.ashrc

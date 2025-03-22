@@ -52,6 +52,23 @@ case $(( $rttwhole / 10 )) in
    *) rtt=100;;
 esac
 
+#Check if cake.cfg exists
+if [ -f "cake.cfg" ]; then
+   while read -r line; do
+      intf=$(echo "$line" | awk '{pring $1}')
+      cfg=$(echo "$line" | awk '{pring $2}')
+      if [[ "$intfc" == "eth0" ]]; then
+         oScheme=$cfg
+      fi
+
+      if [[ "$intfc" == "ifb4eth0" ]]; then
+         iScheme=$cfg
+      fi      
+   ;done < cake.cfg
+else
+   oScheme="diffserv3" #default cake value for eth0
+   iScheme="besteffort" #default cake value for ifb4eth0
+fi
 #Re-apply CAKE
 while read -r line; do
    #retrieve base command and update rtt to 20ms (default cake rtt (from web ui) is 100ms)
@@ -60,10 +77,10 @@ while read -r line; do
    updated_basecmd=$(echo "$basecmd" | sed -E "s/\brtt\s[0-9]+ms/rtt ${rtt}ms/")
    if [[ "$intfc" == "eth0" ]]; then
       #update bandwidth
-      cmd=$(echo "$updated_basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}/bandwidth ${ULSpeedMbps}mbit/") #\b whole word boundary)
+      cmd=$(echo "$updated_basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}\s[a-zA-Z]+([0-9])?/bandwidth ${ULSpeedMbps}mbit ${oScheme}/") #\b whole word boundary)
    else
       #update bandwidth
-      cmd=$(echo "$updated_basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}/bandwidth ${DLSpeedMbps}mbit/") #\b whole word boundary)
+      cmd=$(echo "$updated_basecmd" | sed -E "s/\bbandwidth\s[0-9]+[a-zA-Z]{3,4}\s[a-zA-Z]+([0-9])?/bandwidth ${DLSpeedMbps}mbit ${iScheme}/") #\b whole word boundary)
    fi
    eval $(echo "tc qdisc replace dev $intfc root cake $cmd"); done < cake.cmd
 
