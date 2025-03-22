@@ -101,8 +101,8 @@ DLSpeedMbps=$(((DLSpeedbps * 8) / 1000000))
 ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 
 #Update bandwidth base from speedtest. This is need before the latency check.
-css_update_cake $eScheme "bandwidth ${ULSpeedMbps}mbit"
-css_update_cake $iScheme "bandwidth ${DLSpeedMbps}mbit"
+css_update_cake "$eScheme" "bandwidth ${ULSpeedMbps}mbit"
+css_update_cake "$iScheme" "bandwidth ${DLSpeedMbps}mbit"
 
 #RTT - Base rtt from dns latency
 dlatency=$(ping -c 10 8.8.8.8 | grep -oE 'time\=[0-9]+(.[0-9]*)?\sms' | grep -oE '[0-9]+(.[0-9]*)?')
@@ -118,8 +118,8 @@ case $(( $rttwhole / 10 )) in
 esac
 
 #Update rtt base from ping response time from Google (8.8.8.8)
-css_update_cake $eScheme "rtt ${rtt}ms"
-css_update_cake $iScheme "rtt ${rtt}ms"
+css_update_cake "$eScheme" "rtt ${rtt}ms"
+css_update_cake "$iScheme" "rtt ${rtt}ms"
 
 #Log new cake settings
 tc qdisc | grep cake >> cake-ss.log
@@ -127,4 +127,4 @@ tc qdisc | grep cake >> cake-ss.log
 #Store logs for the last 7 updates only (tail -21)
 tail -21 cake-ss.log > temp.log && mv temp.log cake-ss.log && chmod 666 cake-ss.log
 
-echo -e "Download Speed: ${DLSpeedMbps}Mbps\nUpload: ${ULSpeedMbps}Mbps\n RTT: ${rtt}"
+echo -e "Download Speed: ${DLSpeedMbps}Mbps\nUpload: ${ULSpeedMbps}Mbps\nRTT: ${rtt}ms"
