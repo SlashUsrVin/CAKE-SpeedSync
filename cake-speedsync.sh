@@ -63,8 +63,7 @@ if [ -f "cake.cfg" ]; then
 
       if [[ "$intfc" == "ifb4eth0" ]]; then
          iScheme=$cfg
-      fi      
-   ;done < cake.cfg
+      fi; done < cake.cfg
 else
    oScheme="diffserv3" #default cake value for eth0
    iScheme="besteffort" #default cake value for ifb4eth0
