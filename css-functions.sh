@@ -39,6 +39,11 @@ css_retrieve_cake_qdisc () {
       echo ""
    else
       tcqparm=$(tc qdisc show dev "$intfc" root)
+      
+      if [ -z "$tcqparm" ]; then
+         css_enable_default_cake
+      fi
+
       tcqparmpart=$(echo "$tcqparm" | grep -oE 'bandwidth\s(unlimited)?([0-9]+[a-zA-Z]{3,4})?\s[a-zA-Z]+([0-9]+)?')
       spd=$(echo "$tcqparmpart" | awk '{print $1, $2}')
       sch=$(echo "$tcqparmpart" | awk '{print $3}')

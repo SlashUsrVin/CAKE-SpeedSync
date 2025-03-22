@@ -7,13 +7,6 @@ date >> cake-ss.log
 . /jffs/scripts/cake-speedsync/css-functions.sh
 
 cd /jffs/scripts/cake-speedsync || exit 1
-
-#Check if CAKE is active
-tccake=$(tc qdisc | grep cake)
-if [ -z "$tccake" ]; then
-   #Enable CAKE with default settings
-   css_enable_default_cake "$eScheme" "$iScheme"
-fi
    
 #Retrieve current CAKE setting
 cake_eth0=$(css_retrieve_cake_qdisc "eth0")
@@ -30,11 +23,6 @@ qd_iSCH=$(echo "$cake_ifb4eth0" | awk '{print $3}')
 qd_iRTT=$(echo "$cake_ifb4eth0" | awk '{print $4, $5}')
 qd_iMPU=$(echo "$cake_ifb4eth0" | awk '{print $6, $7}')
 qd_iOVH=$(echo "$cake_ifb4eth0" | awk '{print $8, $9}')   
-
-#Increase bandwidth temporarily to avoid throttling
-#Default settings is already set to unlimited but if cake is already active this will ensure the bandwidth is updated to unlimited before the speed test
-tc qdisc change dev ifb4eth0 root cake bandwidth unlimited #Download
-tc qdisc change dev eth0 root cake bandwidth unlimited     #Upload
 
 #Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme in the cfg file (i.e diffserv4, diffserv3,etc)
 if [ -f "cake.cfg" ]; then
@@ -69,6 +57,18 @@ if [ "$qd_iSCH" != "$cf_iSCH" ]; then
 else
    iScheme="$qd_iSCH"   
 fi
+
+#Check if CAKE is active
+tccake=$(tc qdisc | grep cake)
+if [ -z "$tccake" ]; then
+   #Enable CAKE with default settings
+   css_enable_default_cake "$eScheme" "$iScheme"
+fi
+
+#Increase bandwidth temporarily to avoid throttling
+#Default settings is already set to unlimited but if cake is already active this will ensure the bandwidth is updated to unlimited before the speed test
+tc qdisc change dev ifb4eth0 root cake bandwidth unlimited #Download
+tc qdisc change dev eth0 root cake bandwidth unlimited     #Upload
 
 #Run Speedtest and generate result in json format
 spdtstresjson=$(ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json)
