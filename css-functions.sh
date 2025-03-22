@@ -10,15 +10,43 @@ css_initialize() {
    cru a cake-speedsync "0 7-23/2 * * * /jffs/scripts/cake-speedsync/cake-speedsync.sh"   
 }
 
-css_preserve_cake () {
-   
-   css_cake_cmd #Save current cake settings. Thes settings will be preserve. Only the bandwidth and rtt will be updated later
+css_enable_default_cake () {
+   eScheme="$1"
+   iScheme="$2"
+   if [ -z "$eScheme" ]; then
+      eScheme="diffserv4"
+   fi
 
-   if [ "$(wc -c < cake.cmd)" -le 10 ]; then
-      #Cake is disabled. Enable with default value. Speed will update once cake-speedsync runs
-      tc qdisc replace dev eth0 root cake bandwidth 1000mbit diffserv3 dual-srchost nat nowash no-ack-filter split-gso rtt 100ms noatm overhead 34 mpu 88
-      tc qdisc replace dev ifb4eth0 root cake bandwidth 1000mbit besteffort dual-dsthost nat wash ingress no-ack-filter split-gso rtt 100ms noatm overhead 34 mpu 88
-      css_cake_cmd
+   if [ -z "$iScheme" ]; then
+      iScheme="diffserv3"
+   fi
+
+   #Enable with default value. Speed and Latency will update once cake-speedsync runs
+   tc qdisc replace dev eth0 root cake bandwidth unlimited ${eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
+   tc qdisc replace dev ifb4eth0 root cake bandwidth unlimited ${iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
+}
+
+css_update_cake () {
+   cake_intf="$1"
+   cake_parm="$2"
+   tc qdisc change dev ${cake_intf} root cake ${cake_parm}
+}
+
+css_retrieve_cake_qdisc () {
+   #Get current settings
+   intfc=$1
+   if [ -z "$1" ]; then
+      echo ""
+   else
+      tcqparm=$(tc qdisc show dev "$intfc" root)
+      tcqparmpart=$(echo "$tcqparm" | grep -oE 'bandwidth\s(unlimited)?([0-9]+[a-zA-Z]{3,4})?\s[a-zA-Z]+([0-9]+)?')
+      spd=$(echo "$tcqparmpart" | awk '{print $1, $2}')
+      sch=$(echo "$tcqparmpart" | awk '{print $3}')
+      rtt=$(echo "$tcqparm" | grep -oE 'rtt\s[0-9]+ms')
+      mpu=$(echo "$tcqparm" | grep -oE 'mpu\s[0-9]+')
+      ovh=$(echo "$tcqparm" |grep -oE 'overhead\s[0-9]+')
+
+      echo $spd $sch $rtt $mpu $ovh
    fi
 }
 
