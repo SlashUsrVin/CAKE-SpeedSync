@@ -27,7 +27,7 @@ css_enable_cake_eth0() {
 }
 
 css_enable_cake_ifb4eth0() {
-   iScheme="$2"
+   iScheme="$1"
    if [ -z "$iScheme" ]; then
       iScheme="diffserv3"
    fi
