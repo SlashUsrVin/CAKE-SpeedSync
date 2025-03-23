@@ -77,7 +77,7 @@ tc qdisc change dev eth0 root cake bandwidth 2gbit     #Upload
 spdtstresjson=$(ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json)
 
 #Restore previous CAKE settings and exit if speedtest fails
-if [ -z "$spdtstresjson" ]; then
+if [ $? -ne 0 ] || [ -z "$spdtstresjson" ]; then
    echo "Speed test failed!" >> cake-ss.log
    
    #Restore previous CAKE settings
@@ -88,6 +88,19 @@ if [ -z "$spdtstresjson" ]; then
    css_update_cake "ifb4eth0" "$qd_iRTT"
 
    exit 1
+fi
+
+#Check if Queueing Discipline changed (current qdisc != qdisc in cake.cfg)
+if [ $eRep -eq 1 ]; then
+   css_enable_cake_eth0 "$eScheme"   #Replace with the new selected Queueing Discipline
+   css_update_cake "eth0" "$qd_eOVH" #Retain overhead from webui
+   css_update_cake "eth0" "$qd_eMPU" #Retain overhead from mpu
+fi
+
+if [ $iRep -eq 1 ]; then
+   css_enable_cake_ifb4eth0 "$iScheme"   #Replace with the new selected Queueing Discipline
+   css_update_cake "ifb4eth0" "$qd_iOVH" #Retain overhead from webui
+   css_update_cake "ifb4eth0" "$qd_iMPU" #Retain overhead from mpu
 fi
 
 #Extract bandwidth from json
@@ -102,18 +115,16 @@ ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 css_update_cake "eth0" "bandwidth ${ULSpeedMbps}mbit"
 css_update_cake "ifb4eth0" "bandwidth ${DLSpeedMbps}mbit"
 
-#RTT - Base rtt from dns latency
+#The RTT value is determined based on the ping response from Google. 
+rttm=5 #The selected RTT will be rounded to the nearest multiple of this variables value for consistency.
 dlatency=$(ping -c 10 8.8.8.8 | grep -oE 'time\=[0-9]+(.[0-9]*)?\sms' | grep -oE '[0-9]+(.[0-9]*)?')
 rttmedian=$(echo "$dlatency" | awk 'NR==6')
 rttwhole=$(echo "$rttmedian" | sed -E 's/\.[0-9]+//')
-case $(( $rttwhole / 10 )) in
-   0) rtt=10;;
-   1) rtt=20;;
-   2) rtt=30;;
-   3) rtt=40;;
-   4) rtt=50;;
-   *) rtt=100;;
-esac
+rtt=$(( (rttwhole + rttm - 1) / rttm * rttm ))
+
+if [ $rtt -ge 100 ]; then
+   rtt=100
+fi
 
 #Update rtt base from ping response time from Google (8.8.8.8)
 css_update_cake "eth0" "rtt ${rtt}ms"
