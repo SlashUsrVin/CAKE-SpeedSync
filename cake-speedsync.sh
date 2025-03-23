@@ -37,7 +37,7 @@ qd_iOVH=$(echo "$cake_ifb4eth0" | awk '{print $8, $9}')
 #Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
 if [ -f "cake.cfg" ]; then
    while read -r line; do
-      intf=$(echo "$line" | awk '{print $1}')
+      intfc=$(echo "$line" | awk '{print $1}')
       cfg=$(echo "$line" | awk '{print $2}')
 
       if [[ "$intfc" == "eth0" ]]; then
