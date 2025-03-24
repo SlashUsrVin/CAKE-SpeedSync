@@ -22,8 +22,6 @@ rm -rf "$TGT_DIR"
 mkdir -p "$TGT_DIR" 
 
 #Fetch scripts from github
-fetch_file ".ashrc"
-fetch_file ".profile"
 fetch_file "cake-speedsync.sh"
 fetch_file "cake.cfg"
 fetch_file "services-start"
@@ -33,23 +31,17 @@ fetch_file "cake-ss-fn.sh"
 chmod +x $TGT_DIR/cake-speedsync.sh
 chmod +x $TGT_DIR/services-start
 chmod +x $TGT_DIR/cake-ss-fn.sh
-chmod +x $TGT_DIR/.ashrc
-chmod +x $TGT_DIR/.profile
 
 #Convert line breaks to unix line breaks
 dos2unix $TGT_DIR/cake-speedsync.sh
 dos2unix $TGT_DIR/cake.cfg
 dos2unix $TGT_DIR/services-start
 dos2unix $TGT_DIR/cake-ss-fn.sh
-dos2unix $TGT_DIR/.ashrc
-dos2unix $TGT_DIR/.profile
 
 #Finalize installation
 #mv -f $TGT_DIR/cake-speedsync.sh $JFFS_DIR/cake-speedsync.sh
 [ -f $JFFS_DIR/services-start ] && mv -f $JFFS_DIR/services-start $TGT_DIR/$(date +"%Y%m%d%H%M%S")-services-start
 mv -f $TGT_DIR/services-start $JFFS_DIR/services-start
-#cp -f $TGT_DIR/.ashrc /tmp/home/root/
-#cp -f $TGT_DIR/.profile /tmp/home/root/
 
 [ -f /jffs/scripts/cake-speedsync/cake-ss-fn.sh ] && . /jffs/scripts/cake-speedsync/cake-ss-fn.sh
 
