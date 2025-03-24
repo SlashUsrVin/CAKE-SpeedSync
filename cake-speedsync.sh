@@ -1,12 +1,12 @@
 #!/bin/sh
 
-cd /jffs/scripts/cake-speedsync || exit 1
+CS_PATH="/jffs/scripts/cake-speedsync"
 
 #Log start date and time
-date >> cake-ss.log
+date >> "$CS_PATH/cake-ss.log"
 
 #Source cake-speedsync related functions
-. /jffs/scripts/cake-speedsync/cake-ss-fn.sh
+. "$CS_PATH/cake-ss-fn.sh"
    
 #If CAKE is disabled, enable it.
 qdisc=$(tc qdisc show dev eth0 root)
@@ -37,17 +37,17 @@ qd_iMPU="$6 $7"
 qd_iOVH="$8 $9"
 
 #Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
-if [ -f "cake.cfg" ]; then
+if [ -f "$CS_PATH/cake.cfg" ]; then
    while read -r line; do
       set -- $(echo "$line" | awk '{print $1, $2}'); intfc=$1; cfg=$2;
 
-      if [[ "$intfc" == "eth0" ]]; then
+      if [ "$intfc" == "eth0" ]; then
          cf_eSCH="$cfg"
       fi
 
-      if [[ "$intfc" == "ifb4eth0" ]]; then
+      if [ "$intfc" == "ifb4eth0" ]; then
          cf_iSCH="$cfg"
-      fi; done < cake.cfg
+      fi; done < "$CS_PATH/cake.cfg"
 else
    cf_eSCH="diffserv4" #default eth0 to diffserv4
    cf_iSCH="diffserv3" #default ifb4eth0 to diffserv3
@@ -132,9 +132,9 @@ cs_upd_qdisc "eth0" "rtt ${rtt}ms"
 cs_upd_qdisc "ifb4eth0" "rtt ${rtt}ms"
 
 #Log new cake settings
-tc qdisc | grep cake >> cake-ss.log
+tc qdisc | grep cake >> "$CS_PATH/cake-ss.log"
 
 #Store logs for the last 7 updates only (tail -21)
-tail -21 cake-ss.log > temp.log && mv temp.log cake-ss.log && chmod 666 cake-ss.log
+tail -21 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
 
 echo -e "Download Speed: ${DLSpeedMbps}Mbps\nUpload: ${ULSpeedMbps}Mbps\nRTT: ${rtt}ms"

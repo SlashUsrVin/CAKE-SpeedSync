@@ -55,4 +55,3 @@ mv -f $TGT_DIR/services-start $JFFS_DIR/services-start
 
 echo -e "\nInstallation Complete!\n\nYou MUST reboot your router manually"
 echo -e "\n\n"
-cd $TGT_DIR
