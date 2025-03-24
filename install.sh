@@ -27,12 +27,12 @@ fetch_file ".profile"
 fetch_file "cake-speedsync.sh"
 fetch_file "cake.cfg"
 fetch_file "services-start"
-fetch_file "css-functions.sh"
+fetch_file "cake-ss-fn.sh"
 
 #Make scripts executable
 chmod +x $TGT_DIR/cake-speedsync.sh
 chmod +x $TGT_DIR/services-start
-chmod +x $TGT_DIR/css-functions.sh
+chmod +x $TGT_DIR/cake-ss-fn.sh
 chmod +x $TGT_DIR/.ashrc
 chmod +x $TGT_DIR/.profile
 
@@ -40,7 +40,7 @@ chmod +x $TGT_DIR/.profile
 dos2unix $TGT_DIR/cake-speedsync.sh
 dos2unix $TGT_DIR/cake.cfg
 dos2unix $TGT_DIR/services-start
-dos2unix $TGT_DIR/css-functions.sh
+dos2unix $TGT_DIR/cake-ss-fn.sh
 dos2unix $TGT_DIR/.ashrc
 dos2unix $TGT_DIR/.profile
 
@@ -51,8 +51,8 @@ mv -f $TGT_DIR/services-start $JFFS_DIR/services-start
 #cp -f $TGT_DIR/.ashrc /tmp/home/root/
 #cp -f $TGT_DIR/.profile /tmp/home/root/
 
-[ -f /jffs/scripts/cake-speedsync/css-functions.sh ] && . /jffs/scripts/cake-speedsync/css-functions.sh
+[ -f /jffs/scripts/cake-speedsync/cake-ss-fn.sh ] && . /jffs/scripts/cake-speedsync/cake-ss-fn.sh
 
-echo -e "\nInstallation Complete!\n\nManually reboot your router.\n\nEvery time you log back in (ssh) you should see the status of what was changed or you can run css_status manually"
+echo -e "\nInstallation Complete!\n\nManually reboot your router."
 echo -e "\n\n"
 cd $TGT_DIR

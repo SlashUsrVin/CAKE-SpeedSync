@@ -22,8 +22,8 @@ ___curl -fsSL "https://raw.githubusercontent.com/mvin321/MERLIN-cake-speedsync/m
 ### __HOW IT WORKS:__  
 1. Update CAKE's bandwidth to very high (2gbit) to avoid throtlling while doing the speedtest.  
 2. Runs the built in Ookla SpeedTest (CLI) in the background to get the current download and upload speed.  
-3. Update bandwidth based from SpeedTest result.  
-4. Run a ping test to Google (8.8.8.8). RTT is set based on the median value from the ping test and rounded to the nearset 5ms increments.
+3. Update CAKE bandwidth based from SpeedTest result.  
+4. Runs a ping test to Google (8.8.8.8). RTT is set based on the median value from the ping test and rounded to the nearset 5ms increments.
 5. Other settings are based of what was set in the QoS page (overhead & mpu).   
-6. Speedtest and dynamic updates will occur every 2 hours from 7:00 AM to 11:00 PM feel free to update the cron entry in /jffs/scripts/cake-speedsync/css-functions.sh (css_initialize) after installation.  
+6. Speedtest and dynamic updates will occur every 2 hours from 7:00 AM to 11:00 PM feel free to update the cron entry in /jffs/scripts/cake-speedsync/cake-ss-fn.sh (cs_init) after installation.  
 7. These steps are also performed every after reboot (waits 30 seconds).  

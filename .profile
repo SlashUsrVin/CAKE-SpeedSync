@@ -1,7 +1,7 @@
 [ -f /tmp/home/root/.ashrc ] && . /tmp/home/root/.ashrc
 
-echo -e "\n\n\n(css_status)"
+echo -e "\n\n\n(cs_status)"
 
-css_status
+cs_status
 
 echo ""

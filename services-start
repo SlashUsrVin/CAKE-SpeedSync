@@ -2,7 +2,7 @@
 sleep 30
 
 #Source cake-speedsync related functions
-. /jffs/scripts/cake-speedsync/css-functions.sh
+. /jffs/scripts/cake-speedsync/cake-ss-fn.sh
 
 #Perform cake-speedsync
-css_initialize
+cs_init

@@ -1,44 +1,45 @@
 #!/bin/sh
 
+cd /jffs/scripts/cake-speedsync || exit 1
+
 #Log start date and time
 date >> cake-ss.log
 
 #Source cake-speedsync related functions
-. /jffs/scripts/cake-speedsync/css-functions.sh
-
-cd /jffs/scripts/cake-speedsync || exit 1
+. /jffs/scripts/cake-speedsync/cake-ss-fn.sh
    
 #If CAKE is disabled, enable it.
 qdisc=$(tc qdisc show dev eth0 root)
 if [ -n "$qdisc" ]; then
-   css_enable_cake_eth0
+   cs_enable_eth0
 fi
 qdisc=$(tc qdisc show dev ifb4eth0 root)
 if [ -n "$qdisc" ]; then
-   css_enable_cake_ifb4eth0
+   cs_enable_ifb4eth0
 fi
 
 #Retrieve current CAKE setting. 
-cake_eth0=$(css_retrieve_cake_qdisc "eth0")
-cake_ifb4eth0=$(css_retrieve_cake_qdisc "ifb4eth0")
+cake_eth0=$(cs_get_qdisc "eth0")
+cake_ifb4eth0=$(cs_get_qdisc "ifb4eth0")
 
-qd_eSPD=$(echo "$cake_eth0" | awk '{print $1, $2}')
-qd_eSCH=$(echo "$cake_eth0" | awk '{print $3}')
-qd_eRTT=$(echo "$cake_eth0" | awk '{print $4, $5}')
-qd_eMPU=$(echo "$cake_eth0" | awk '{print $6, $7}')
-qd_eOVH=$(echo "$cake_eth0" | awk '{print $8, $9}')
+set -- $(echo "$cake_eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
+qd_eSPD="$1 $2"
+qd_eSCH="$3"
+qd_eRTT="$4 $5"
+qd_eMPU="$6 $7"
+qd_eOVH="$8 $9"
 
-qd_iSPD=$(echo "$cake_ifb4eth0" | awk '{print $1, $2}')
-qd_iSCH=$(echo "$cake_ifb4eth0" | awk '{print $3}')
-qd_iRTT=$(echo "$cake_ifb4eth0" | awk '{print $4, $5}')
-qd_iMPU=$(echo "$cake_ifb4eth0" | awk '{print $6, $7}')
-qd_iOVH=$(echo "$cake_ifb4eth0" | awk '{print $8, $9}')   
+set -- $(echo "$cake_ifb4eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
+qd_iSPD="$1 $2"
+qd_iSCH="$3"
+qd_iRTT="$4 $5"
+qd_iMPU="$6 $7"
+qd_iOVH="$8 $9"
 
 #Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
 if [ -f "cake.cfg" ]; then
    while read -r line; do
-      intfc=$(echo "$line" | awk '{print $1}')
-      cfg=$(echo "$line" | awk '{print $2}')
+      set -- $(echo "$line" | awk '{print $1, $2}'); intfc=$1; cfg=$2;
 
       if [[ "$intfc" == "eth0" ]]; then
          cf_eSCH="$cfg"
@@ -81,26 +82,26 @@ if [ $? -ne 0 ] || [ -z "$spdtstresjson" ]; then
    echo "Speed test failed!" >> cake-ss.log
    
    #Restore previous CAKE settings
-   css_update_cake "eth0" "$qd_eSPD"
-   css_update_cake "eth0" "$qd_eRTT"
+   cs_upd_qdisc "eth0" "$qd_eSPD"
+   cs_upd_qdisc "eth0" "$qd_eRTT"
 
-   css_update_cake "ifb4eth0" "$qd_iSPD"
-   css_update_cake "ifb4eth0" "$qd_iRTT"
+   cs_upd_qdisc "ifb4eth0" "$qd_iSPD"
+   cs_upd_qdisc "ifb4eth0" "$qd_iRTT"
 
    exit 1
 fi
 
 #Check if Queueing Discipline changed (current qdisc != qdisc in cake.cfg)
 if [ $eRep -eq 1 ]; then
-   css_enable_cake_eth0 "$eScheme"   #Replace with the new selected Queueing Discipline
-   css_update_cake "eth0" "$qd_eOVH" #Retain overhead from webui
-   css_update_cake "eth0" "$qd_eMPU" #Retain overhead from mpu
+   cs_enable_eth0 "$eScheme"   #Replace with the new selected Queueing Discipline
+   cs_upd_qdisc "eth0" "$qd_eOVH" #Retain overhead from webui
+   cs_upd_qdisc "eth0" "$qd_eMPU" #Retain overhead from mpu
 fi
 
 if [ $iRep -eq 1 ]; then
-   css_enable_cake_ifb4eth0 "$iScheme"   #Replace with the new selected Queueing Discipline
-   css_update_cake "ifb4eth0" "$qd_iOVH" #Retain overhead from webui
-   css_update_cake "ifb4eth0" "$qd_iMPU" #Retain overhead from mpu
+   cs_enable_ifb4eth0 "$iScheme"   #Replace with the new selected Queueing Discipline
+   cs_upd_qdisc "ifb4eth0" "$qd_iOVH" #Retain overhead from webui
+   cs_upd_qdisc "ifb4eth0" "$qd_iMPU" #Retain overhead from mpu
 fi
 
 #Extract bandwidth from json
@@ -112,8 +113,8 @@ DLSpeedMbps=$(((DLSpeedbps * 8) / 1000000))
 ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 
 #Update bandwidth base from speedtest. This is need before the latency check.
-css_update_cake "eth0" "bandwidth ${ULSpeedMbps}mbit"
-css_update_cake "ifb4eth0" "bandwidth ${DLSpeedMbps}mbit"
+cs_upd_qdisc "eth0" "bandwidth ${ULSpeedMbps}mbit"
+cs_upd_qdisc "ifb4eth0" "bandwidth ${DLSpeedMbps}mbit"
 
 #The RTT value is determined based on the ping response from Google. 
 rttm=5 #The selected RTT will be rounded to the nearest multiple of this variables value for consistency.
@@ -127,8 +128,8 @@ if [ $rtt -ge 100 ]; then
 fi
 
 #Update rtt base from ping response time from Google (8.8.8.8)
-css_update_cake "eth0" "rtt ${rtt}ms"
-css_update_cake "ifb4eth0" "rtt ${rtt}ms"
+cs_upd_qdisc "eth0" "rtt ${rtt}ms"
+cs_upd_qdisc "ifb4eth0" "rtt ${rtt}ms"
 
 #Log new cake settings
 tc qdisc | grep cake >> cake-ss.log

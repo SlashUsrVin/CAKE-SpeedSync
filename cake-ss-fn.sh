@@ -1,4 +1,4 @@
-css_initialize() {
+cs_init () {
    #Run speedtest and apply cake settings
    /jffs/scripts/cake-speedsync/cake-speedsync.sh
 
@@ -10,46 +10,47 @@ css_initialize() {
    cru a cake-speedsync "0 7-23/2 * * * /jffs/scripts/cake-speedsync/cake-speedsync.sh"   
 }
 
-css_enable_default_cake () {
+cs_enable_default () {
    eScheme="$1"
    iScheme="$2"
-   css_enable_cake_eth0 "$eScheme"
-   css_enable_cake_ifb4eth0 "$iScheme"
+   cs_enable_eth0 "$eScheme"
+   cs_enable_ifb4eth0 "$iScheme"
 }
 
-css_enable_cake_eth0() {
+cs_enable_eth0 () {
    eScheme="$1"
    if [ -z "$eScheme" ]; then
       eScheme="diffserv4"
    fi
    #Enable with default value. Speed and Latency will update once cake-speedsync runs
+   tc qdisc del dev eth0 root 2>/dev/null
    tc qdisc replace dev eth0 root cake bandwidth 2gbit ${eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
 }
 
-css_enable_cake_ifb4eth0() {
+cs_enable_ifb4eth0 () {
    iScheme="$1"
    if [ -z "$iScheme" ]; then
       iScheme="diffserv3"
    fi
    #Enable with default value. Speed and Latency will update once cake-speedsync runs
+   tc qdisc del dev ifb4eth0 root 2>/dev/null
    tc qdisc replace dev ifb4eth0 root cake bandwidth 2gbit ${iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 54 mpu 88
 }
 
-css_update_cake () {
+cs_upd_qdisc () {
    cake_intf="$1"
    cake_parm="$2"
    tc qdisc change dev ${cake_intf} root cake ${cake_parm}
 }
 
-css_retrieve_cake_qdisc () {
+cs_get_qdisc () {
    intfc=$1
    if [ -z "$1" ]; then
       echo ""
    else
       tcqparm=$(tc qdisc show dev "$intfc" root)
       tcqparmpart=$(echo "$tcqparm" | grep -oE 'bandwidth\s(unlimited)?([0-9]+[a-zA-Z]{3,4})?\s[a-zA-Z]+([0-9]+)?')
-      spd=$(echo "$tcqparmpart" | awk '{print $1, $2}')
-      sch=$(echo "$tcqparmpart" | awk '{print $3}')
+      set -- $(echo "$tcqparmpart" | awk '{print $1, $2, $3}'); spd="$1 $2"; sch="$3"
       rtt=$(echo "$tcqparm" | grep -oE 'rtt\s[0-9]+ms')
       mpu=$(echo "$tcqparm" | grep -oE 'mpu\s[0-9]+')
       ovh=$(echo "$tcqparm" |grep -oE 'overhead\s[0-9]+')
@@ -58,53 +59,7 @@ css_retrieve_cake_qdisc () {
    fi
 }
 
-css_cake_cmd() {
-   cd /jffs/scripts/cake-speedsync/ || exit 1
-
-   #construct command for eth0
-   cmd=$(tc qdisc | awk '/dev eth0/ && /bandwidth/' | grep -oE 'dev*.*') 
-   echo $cmd > cake.cmd
-
-   #construct command for ifb4eth0
-   cmd=$(tc qdisc | awk '/dev ifb4eth0/ && /bandwidth/' | grep -oE 'dev*.*')
-   echo $cmd >> cake.cmd   
-}
-
-css_status () {
-   echo -e "\n[DSCP RULES]"
-   echo  "  Active DSCP Rule:"
-
-   ipt="$(iptables -t mangle -L --line-numbers | grep -E "Chain|DSCP")"
-
-   css_check_null "$ipt" "WARNING: Rules not setup. If ISP is stripping DSCP tags, all packets will fall under besteffort. Run /jffs/scripts/services-start and check again"
-
-   echo -e "\n\n[CRON JOB - SCHEDULE - Make sure cake is re-adjusted every n hours]"
-   echo  "  Active Cron Entry: "
-
-   cronj=$(crontab -l | grep cake-speedsync.sh)
-
-   css_check_null "$cronj" "WARNING: Crontab entry is missing. Run /jffs/scripts/services-start and check again"
-
-   echo -e "\n\n[CAKE SETTINGS]"
-   echo  "  Active CAKE Setting:"
-
-   tccake=$(tc qdisc | grep cake)
-
-   css_check_null "$tccake" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh"
-
-   echo -e "\n  cake-speedsync:"
-
-   dyntclog=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -3)
-   lastrun=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -3 | head -1)
-
-   uploadSpd=$(echo "$dyntclog" | grep -oE 'dev eth0 root .*' | grep -oE '[0-9]+Mbit')
-   downloadSpd=$(echo "$dyntclog" | grep -oE 'dev ifb4eth0 root .*' | grep -oE '[0-9]+Mbit')
-
-   css_check_null "" "last run: $lastrun upload bandwidth:$uploadSpd download bandwidth:$downloadSpd"
-   echo -e "\n"
-}
-
-css_check_null () {
+cs_pad_text () {
    if [ -z "$1" ]; then
       echo "$2" | sed 's/^/       /'
    else
@@ -112,31 +67,84 @@ css_check_null () {
    fi
 }
 
-css_qos_udp () {
+cs_chk_ip () {
+   pvalue=$1
+   ip=$(echo "$pvalue" | grep -oE '^192\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
+   if [ -z "$ip" ]; then
+      echo 0
+   else
+      echo 1
+   fi
+}
+
+cs_chk_port () {
+   pvalue=$1
+   set -- $(echo "$pvalue" | awk -F: '{print $1,$2,$3}'); p1="$1"; p2="$2"; p3="$3"
+
+   if [ -n "$p3" ]; then
+      echo 0 #wrong port range format
+      return
+   fi
+
+   for port in "$p1" "$p2"; do
+      pchk=$(echo $port | grep -oE '^[0-9]{1,5}$')
+      if [ -z "$pchk" ]; then
+         echo 0 #wrong format
+         return
+      fi
+
+      if [ $pchk -le 0 ] || [ $pchk -ge 65536 ]; then
+         echo 0 #wrong port value
+         return
+      fi
+   done
+   
+   echo 1
+}
+
+cs_chk_proto () {
+   pvalue=$1
+
+   case "$pvalue" in 
+      tcp|TCP|udp|UDP) echo 1;;
+      *) echo 0;;
+   esac
+}
+
+cs_chk_prio () {
+   pvalue=$1
+   
+   case "$pvalue" in
+      1|2|3|4) echo 1 ;; 
+      *) echo 0 ;;  
+   esac      
+}
+
+cs_qos_udp () {
    $proto="udp"
    $port=$1
    $prio=$2
    $ip=$3
 
-   css_pkt_qos $ip $port $prio $proto
+   cs_pkt_qos $ip $port $prio $proto
 }
 
-css_qos_tcp () {
+cs_qos_tcp () {
    $proto="tcp"
    $port=$1
    $prio=$2
    $ip=$3
 
-   css_pkt_qos $ip $port $prio $proto   
+   cs_pkt_qos $ip $port $prio $proto   
 }
 
-css_qos_refresh () {
+cs_qos_rfr () {
    awk '{print $1, $2, $3, $4}' /jffs/scripts/cake-speedsync/qosports 2>/dev/null | while read -r ip port tag protocol; do
-   css_pkt_qos $ip $port $tag $protocol; done 
+   cs_pkt_qos $ip $port $tag $protocol; done 
 
 }
 
-css_pkt_qos () {
+cs_pkt_qos () {
    ip=$1
    port=$2
 
@@ -194,4 +202,36 @@ css_pkt_qos () {
       esac
       echo "$ip $xport $xtag $xproto" >> /jffs/scripts/cake-speedsync/qosports; done
    
+}
+
+cs_status () {
+   echo -e "\n[DSCP RULES]"
+   echo  "  Active DSCP Rule:"
+
+   ipt="$(iptables -t mangle -L --line-numbers | grep -E "Chain|DSCP")"
+
+   echo -e "\n\n[CRON JOB - SCHEDULE - Make sure cake is re-adjusted every n hours]"
+   echo  "  Active Cron Entry: "
+
+   cronj=$(crontab -l | grep cake-speedsync.sh)
+
+   cs_pad_text "$cronj" "WARNING: Crontab entry is missing. Run /jffs/scripts/services-start and check again"
+
+   echo -e "\n\n[CAKE SETTINGS]"
+   echo  "  Active CAKE Setting:"
+
+   tccake=$(tc qdisc | grep cake)
+
+   cs_pad_text "$tccake" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh"
+
+   echo -e "\n\n  cake-speedsync:"
+
+   dyntclog=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -3)
+   lastrun=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -3 | head -1)
+
+   uploadSpd=$(echo "$dyntclog" | grep -oE 'dev eth0 root .*' | grep -oE '[0-9]+Mbit')
+   downloadSpd=$(echo "$dyntclog" | grep -oE 'dev ifb4eth0 root .*' | grep -oE '[0-9]+Mbit')
+
+   cs_pad_text "" "last run: $lastrun upload bandwidth:$uploadSpd download bandwidth:$downloadSpd"
+   echo -e "\n"
 }
