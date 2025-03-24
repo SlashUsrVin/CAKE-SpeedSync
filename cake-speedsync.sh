@@ -95,13 +95,13 @@ fi
 if [ $eRep -eq 1 ]; then
    cs_enable_eth0 "$eScheme"   #Replace with the new selected Queueing Discipline
    cs_upd_qdisc "eth0" "$qd_eOVH" #Retain overhead from webui
-   cs_upd_qdisc "eth0" "$qd_eMPU" #Retain overhead from mpu
+   cs_upd_qdisc "eth0" "$qd_eMPU" #Retain mpu from webui
 fi
 
 if [ $iRep -eq 1 ]; then
    cs_enable_ifb4eth0 "$iScheme"   #Replace with the new selected Queueing Discipline
    cs_upd_qdisc "ifb4eth0" "$qd_iOVH" #Retain overhead from webui
-   cs_upd_qdisc "ifb4eth0" "$qd_iMPU" #Retain overhead from mpu
+   cs_upd_qdisc "ifb4eth0" "$qd_iMPU" #Retain mpu from webui
 fi
 
 #Extract bandwidth from json
@@ -112,22 +112,24 @@ ULSpeedbps=$(echo "$spdtstresjson" | grep -oE '"upload":\{"bandwidth":[0-9]+' | 
 DLSpeedMbps=$(((DLSpeedbps * 8) / 1000000))
 ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 
-#Update bandwidth base from speedtest. This is need before the latency check.
+#Update bandwidth base from speedtest. Applied before the latency check.
 cs_upd_qdisc "eth0" "bandwidth ${ULSpeedMbps}mbit"
 cs_upd_qdisc "ifb4eth0" "bandwidth ${DLSpeedMbps}mbit"
 
 #The RTT value is determined based on the ping response from Google. 
-rttm=5 #The selected RTT will be rounded to the nearest multiple of this variables value for consistency.
+rttm=5 
 dlatency=$(ping -c 10 8.8.8.8 | grep -oE 'time\=[0-9]+(.[0-9]*)?\sms' | grep -oE '[0-9]+(.[0-9]*)?')
 rttmedian=$(echo "$dlatency" | awk 'NR==6')
 rttwhole=$(echo "$rttmedian" | sed -E 's/\.[0-9]+//')
+
+#The selected RTT will be rounded to the nearest multiple of (rttm value) for consistency.
 rtt=$(( (rttwhole + rttm - 1) / rttm * rttm ))
 
 if [ $rtt -ge 100 ]; then
    rtt=100
 fi
 
-#Update rtt base from ping response time from Google (8.8.8.8)
+#Apply rtt
 cs_upd_qdisc "eth0" "rtt ${rtt}ms"
 cs_upd_qdisc "ifb4eth0" "rtt ${rtt}ms"
 
@@ -136,6 +138,8 @@ tc qdisc | grep cake >> "$CS_PATH/cake-ss.log"
 
 #Store logs for the last 7 updates only (tail -21)
 tail -21 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
+
+#Show run details
 clear
 echo -e "\n\n    Queueing Discipline (eth0): $eScheme    Bandwidth: ${DLSpeedMbps}Mbps    RTT: ${rtt}ms    Overhead: $qd_eOVH    MPU: $qd_eMPU" 
 echo -e "Queueing Discipline (ifb4eth0): $iScheme    Bandwidth: ${ULSpeedMbps}Mbps    RTT: ${rtt}ms    Overhead: $qd_iOVH    MPU: $qd_iMPU"
