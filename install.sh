@@ -45,5 +45,6 @@ mv -f $TGT_DIR/services-start $JFFS_DIR/services-start
 
 [ -f /jffs/scripts/cake-speedsync/cake-ss-fn.sh ] && . /jffs/scripts/cake-speedsync/cake-ss-fn.sh
 
-echo -e "\nInstallation Complete!\n\nYou MUST reboot your router manually"
-echo -e "\n\n"
+echo -e "\nInstallation Complete!"
+echo -e "\n\nRunning CAKE-SpeedSync...."
+$TGT_DIR/cake-speedsync.sh

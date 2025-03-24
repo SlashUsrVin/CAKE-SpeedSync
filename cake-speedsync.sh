@@ -137,4 +137,9 @@ tc qdisc | grep cake >> "$CS_PATH/cake-ss.log"
 #Store logs for the last 7 updates only (tail -21)
 tail -21 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
 
-echo -e "Download Speed: ${DLSpeedMbps}Mbps\nUpload: ${ULSpeedMbps}Mbps\nRTT: ${rtt}ms"
+echo -e "\n\nCake-SpeedSync completed successfully!"
+echo -e "\n    Queueing Discipline (eth0): $eScheme    Bandwidth: ${DLSpeedMbps}Mbps    RTT: ${rtt}ms    Overhead: $qd_eOVH    MPU: $qd_eMPU" 
+echo -e "\nQueueing Discipline (ifb4eth0): $iScheme    Bandwidth: ${ULSpeedMbps}Mbps   RTT: ${rtt}ms    Overhead: $qd_iOVH    MPU: $qd_iMPU"
+echo -e "\n\nActive CAKE Settings:"
+tc qdisc | grep cake
+echo -e "\n"
