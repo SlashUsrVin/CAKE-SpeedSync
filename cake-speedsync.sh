@@ -73,6 +73,9 @@ fi
 #Default settings is already set to 2gbit but if cake is already active this will ensure the bandwidth is set very high before the speed test
 tc qdisc change dev ifb4eth0 root cake bandwidth 2gbit #Download
 tc qdisc change dev eth0 root cake bandwidth 2gbit     #Upload
+#Increase rtt temporarily to avoid throttling
+tc qdisc change dev ifb4eth0 root cake rtt 100ms #Download
+tc qdisc change dev eth0 root cake rtt 100ms     #Upload
 
 #Run Speedtest and generate result in json format
 spdtstresjson=$(ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json)
@@ -116,22 +119,34 @@ ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
 cs_upd_qdisc "eth0" "bandwidth ${ULSpeedMbps}mbit"
 cs_upd_qdisc "ifb4eth0" "bandwidth ${DLSpeedMbps}mbit"
 
-#The RTT value is determined based on the ping response from Google. 
+#RTT multiple - basis for both eth0 and ifb4eth0
 rttm=5 
-dlatency=$(ping -c 10 8.8.8.8 | grep -oE 'time\=[0-9]+(.[0-9]*)?\sms' | grep -oE '[0-9]+(.[0-9]*)?')
-rttmedian=$(echo "$dlatency" | awk 'NR==6')
-rttwhole=$(echo "$rttmedian" | sed -E 's/\.[0-9]+//')
 
-#The selected RTT will be rounded to the nearest multiple of (rttm value) for consistency.
-rtt=$(( (rttwhole + rttm - 1) / rttm * rttm ))
+#Extract latency from json
+#The RTT value for ifb4eth0 is determined based on the speedtest latency 
+iping=$(echo "$spdtstresjson" | grep -oE '"latency":\s?[0-9]+(\.[0-9]*)?' | grep -oE '[0-9]+(\.[0-9]*)?')
+ipingwhole=$(echo "$iping" | sed -E 's/\.[0-9]+//')
 
-if [ $rtt -ge 100 ]; then
-   rtt=100
+#The RTT value for eth0 is determined based on the ping response from Google. 
+eping=$(ping -c 10 8.8.8.8 | grep -oE 'time\=[0-9]+(.[0-9]*)?\sms' | grep -oE '[0-9]+(.[0-9]*)?')
+epingmedian=$(echo "$eping" | awk 'NR==6')
+epingwhole=$(echo "$epingmedian" | sed -E 's/\.[0-9]+//')
+
+#The selected RTT for eth0 and ifb4eth0 will be rounded to the nearest multiple of (rttm value) for consistency.
+ertt=$(( (epingwhole + rttm - 1) / rttm * rttm )) #eth0
+irtt=$(( (ipingwhole + rttm - 1) / rttm * rttm )) #ifb4eth0
+
+if [ $ertt -ge 95 ]; then
+   ertt=100 #default cake rtt
+fi
+
+if [ $irtt -ge 95 ]; then
+   irtt=100 #default cake rtt
 fi
 
 #Apply rtt
-cs_upd_qdisc "eth0" "rtt ${rtt}ms"
-cs_upd_qdisc "ifb4eth0" "rtt ${rtt}ms"
+cs_upd_qdisc "eth0" "rtt ${ertt}ms"
+cs_upd_qdisc "ifb4eth0" "rtt ${irtt}ms"
 
 #Log new cake settings
 tc qdisc | grep cake >> "$CS_PATH/cake-ss.log"
@@ -141,8 +156,9 @@ tail -21 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" 
 
 #Show run details
 clear
-echo -e "\n\n    Queueing Discipline (eth0): $eScheme    Bandwidth: ${DLSpeedMbps}Mbps    RTT: ${rtt}ms    Overhead: $qd_eOVH    MPU: $qd_eMPU" 
-echo -e "Queueing Discipline (ifb4eth0): $iScheme    Bandwidth: ${ULSpeedMbps}Mbps    RTT: ${rtt}ms    Overhead: $qd_iOVH    MPU: $qd_iMPU"
+echo -e "\n\n    Queueing Discipline (eth0): $eScheme    Bandwidth: ${DLSpeedMbps}Mbps    RTT: ${ertt}ms    Overhead: $qd_eOVH    MPU: $qd_eMPU" 
+echo -e "\n\n    SpeedTest Result ---> Download: ${DLSpeedMbps}Mbps    Upload: ${ULSpeedMbps}Mbps    Latency: ${irtt}ms" 
+echo -e "   Google Ping Test: --->   Median: ${epingmedian}ms"
 echo -e "\nActive CAKE Settings:"
 tc qdisc | grep cake
 echo -e "\n\nCake-SpeedSync completed successfully!\n\n\n"
