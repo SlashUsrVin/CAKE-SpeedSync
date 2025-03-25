@@ -157,7 +157,7 @@ tail -21 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" 
 #Show run details
 clear
 echo -e "\n\n    Queueing Discipline (eth0): $eScheme    Bandwidth: ${DLSpeedMbps}Mbps    RTT: ${ertt}ms    Overhead: $qd_eOVH    MPU: $qd_eMPU" 
-echo -e "\n\n    SpeedTest Result ---> Download: ${DLSpeedMbps}Mbps    Upload: ${ULSpeedMbps}Mbps    Latency: ${irtt}ms" 
+echo -e "\n\n    SpeedTest Result ---> Download: ${DLSpeedMbps}Mbps    Upload: ${ULSpeedMbps}Mbps    Latency: ${iping}ms" 
 echo -e "   Google Ping Test: --->   Median: ${epingmedian}ms"
 echo -e "\nActive CAKE Settings:"
 tc qdisc | grep cake
