@@ -104,19 +104,6 @@ if [ $? -ne 0 ] || [ -z "$spdtstresjson" ]; then
    exit 1
 fi
 
-#Check if Queueing Discipline changed (current qdisc != qdisc in cake.cfg)
-if [ $eRep -eq 1 ]; then
-   cs_enable_eth0 "$eScheme"   #Replace with the new selected Queueing Discipline
-   cs_upd_qdisc "eth0" "$qd_eOVH" #Retain overhead from webui
-   cs_upd_qdisc "eth0" "$qd_eMPU" #Retain mpu from webui
-fi
-
-if [ $iRep -eq 1 ]; then
-   cs_enable_ifb4eth0 "$iScheme"   #Replace with the new selected Queueing Discipline
-   cs_upd_qdisc "ifb4eth0" "$qd_iOVH" #Retain overhead from webui
-   cs_upd_qdisc "ifb4eth0" "$qd_iMPU" #Retain mpu from webui
-fi
-
 #Extract bandwidth from json
 DLSpeedbps=$(echo "$spdtstresjson" | grep -oE '\],"bandwidth":[0-9]+' | grep -oE [0-9]+)
 ULSpeedbps=$(echo "$spdtstresjson" | grep -oE '"upload":\{"bandwidth":[0-9]+' | grep -oE [0-9]+)
@@ -124,10 +111,6 @@ ULSpeedbps=$(echo "$spdtstresjson" | grep -oE '"upload":\{"bandwidth":[0-9]+' | 
 #Convert bandwidth to Mbits - This formula is based from the speedtest in QoS speedtest tab
 DLSpeedMbps=$(((DLSpeedbps * 8) / 1000000))
 ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
-
-#Update bandwidth base from speedtest. Applied before the latency check.
-cs_upd_qdisc "eth0" "bandwidth ${ULSpeedMbps}mbit"
-cs_upd_qdisc "ifb4eth0" "bandwidth ${DLSpeedMbps}mbit"
 
 #RTT multiple - basis for both eth0 and ifb4eth0
 rttm=5 
@@ -154,9 +137,23 @@ if [ $irtt -ge 95 ]; then
    irtt=100 #default cake rtt
 fi
 
+#Re-enable CAKE and update settings
+cs_enable_eth0 "$eScheme"   #Replace with the new selected Queueing Discipline
+cs_enable_ifb4eth0 "$iScheme"   #Replace with the new selected Queueing Discipline
+
+#Update bandwidth base from speedtest. 
+cs_upd_qdisc "eth0" "bandwidth ${ULSpeedMbps}mbit"
+cs_upd_qdisc "ifb4eth0" "bandwidth ${DLSpeedMbps}mbit"
+
 #Apply rtt
-cs_upd_qdisc "eth0" "rtt ${ertt}ms"
-cs_upd_qdisc "ifb4eth0" "rtt ${irtt}ms"
+cs_upd_qdisc "eth0" "rtt ${ertt}ms"      #From speedtest latency
+cs_upd_qdisc "ifb4eth0" "rtt ${irtt}ms"  #From google ping response time
+
+#Retain mpu and overhead (from web ui - cake QoS Page)
+cs_upd_qdisc "eth0" "$qd_eOVH" #Retain overhead from webui
+cs_upd_qdisc "eth0" "$qd_eMPU" #Retain mpu from webui
+cs_upd_qdisc "ifb4eth0" "$qd_iOVH" #Retain overhead from webui
+cs_upd_qdisc "ifb4eth0" "$qd_iMPU" #Retain mpu from webui
 
 #Log new cake settings
 tc qdisc | grep cake >> "$CS_PATH/cake-ss.log"
