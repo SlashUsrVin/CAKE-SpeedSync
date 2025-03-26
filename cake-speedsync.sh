@@ -11,30 +11,31 @@ date >> "$CS_PATH/cake-ss.log"
 #If CAKE is disabled, enable it.
 qdisc=$(tc qdisc show dev eth0 root)
 if [ -n "$qdisc" ]; then
-   cs_enable_eth0
+   #Retrieve current CAKE eth0 setting. 
+   cake_eth0=$(cs_get_qdisc "eth0")
+   set -- $(echo "$cake_eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
+   qd_eSPD="$1 $2"
+   qd_eSCH="$3"
+   qd_eRTT="$4 $5"
+   qd_eMPU="$6 $7"
+   qd_eOVH="$8 $9"
+   eqosenabled="1"
+else
+   eqosenabled="0"
 fi
 qdisc=$(tc qdisc show dev ifb4eth0 root)
 if [ -n "$qdisc" ]; then
-   cs_enable_ifb4eth0
+   cake_ifb4eth0=$(cs_get_qdisc "ifb4eth0")
+   set -- $(echo "$cake_ifb4eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
+   qd_iSPD="$1 $2"
+   qd_iSCH="$3"
+   qd_iRTT="$4 $5"
+   qd_iMPU="$6 $7"
+   qd_iOVH="$8 $9"
+   iqosenabled="1"
+else
+   iqosenabled="0"
 fi
-
-#Retrieve current CAKE setting. 
-cake_eth0=$(cs_get_qdisc "eth0")
-cake_ifb4eth0=$(cs_get_qdisc "ifb4eth0")
-
-set -- $(echo "$cake_eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
-qd_eSPD="$1 $2"
-qd_eSCH="$3"
-qd_eRTT="$4 $5"
-qd_eMPU="$6 $7"
-qd_eOVH="$8 $9"
-
-set -- $(echo "$cake_ifb4eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
-qd_iSPD="$1 $2"
-qd_iSCH="$3"
-qd_iRTT="$4 $5"
-qd_iMPU="$6 $7"
-qd_iOVH="$8 $9"
 
 #Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
 if [ -f "$CS_PATH/cake.cfg" ]; then
@@ -50,10 +51,11 @@ if [ -f "$CS_PATH/cake.cfg" ]; then
       fi; done < "$CS_PATH/cake.cfg"
 else
    cf_eSCH="diffserv4" #default eth0 to diffserv4
-   cf_iSCH="diffserv3" #default ifb4eth0 to diffserv3
+   cf_iSCH="diffserv4" #default ifb4eth0 to diffserv4
 fi
 
-eRep="0"
+#For checking if queue discpline was changed from the cfg file. If so, delete and re-add CAKE
+eRep="0" 
 if [ "$qd_eSCH" != "$cf_eSCH" ] && [ -n "$cf_eSCH" ]; then
    eRep="1"
    eScheme="$cf_eSCH"
@@ -69,13 +71,11 @@ else
    iScheme="$qd_iSCH"   
 fi
 
-#Increase bandwidth temporarily to avoid throttling
-#Default settings is already set to 2gbit but if cake is already active this will ensure the bandwidth is set very high before the speed test
-tc qdisc change dev ifb4eth0 root cake bandwidth 2gbit #Download
-tc qdisc change dev eth0 root cake bandwidth 2gbit     #Upload
-#Increase rtt temporarily to avoid throttling
-tc qdisc change dev ifb4eth0 root cake rtt 100ms #Download
-tc qdisc change dev eth0 root cake rtt 100ms     #Upload
+#Switch to fq_codel to prevent throtlling during speedtest
+cs_disable_eth0
+tc qdisc replace dev eth0 root fq_codel
+cs_disable_ifb4eth0
+tc qdisc replace dev ifb4eth0 root fq_codel
 
 #Run Speedtest and generate result in json format
 spdtstresjson=$(ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json)
@@ -84,12 +84,22 @@ spdtstresjson=$(ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/con
 if [ $? -ne 0 ] || [ -z "$spdtstresjson" ]; then
    echo "Speed test failed!" >> cake-ss.log
    
-   #Restore previous CAKE settings
-   cs_upd_qdisc "eth0" "$qd_eSPD"
-   cs_upd_qdisc "eth0" "$qd_eRTT"
-
-   cs_upd_qdisc "ifb4eth0" "$qd_iSPD"
-   cs_upd_qdisc "ifb4eth0" "$qd_iRTT"
+   #If enabled before speedtest, restore previous CAKE settings. Otherwise, delete qdisc for eth0
+   if [ "$eqosenabled" == "1" ]; then
+      cs_enable_eth0 "$qd_eSCH"
+      cs_upd_qdisc "eth0" "$qd_eSPD"
+      cs_upd_qdisc "eth0" "$qd_eRTT"
+   else
+      cs_disable_eth0
+   fi
+   #If enabled before speedtest, restore previous CAKE settings. Otherwise, delete qdisc for ifb4eth0
+   if [ "$iqosenabled" == "1" ]; then
+      cs_enable_ifb4eth0 "$qd_iSCH"
+      cs_upd_qdisc "ifb4eth0" "$qd_iSPD"
+      cs_upd_qdisc "ifb4eth0" "$qd_iRTT"
+   else
+      cs_disable_ifb4eth0
+   fi
 
    exit 1
 fi

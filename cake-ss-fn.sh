@@ -23,18 +23,26 @@ cs_enable_eth0 () {
       eScheme="diffserv4"
    fi
    #Enable with default value. Speed and Latency will update once cake-speedsync runs
-   tc qdisc del dev eth0 root 2>/dev/null
+   cs_disable_eth0
    tc qdisc replace dev eth0 root cake bandwidth 2gbit ${eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 48 mpu 64
 }
 
 cs_enable_ifb4eth0 () {
    iScheme="$1"
    if [ -z "$iScheme" ]; then
-      iScheme="diffserv3"
+      iScheme="diffserv4"
    fi
    #Enable with default value. Speed and Latency will update once cake-speedsync runs
-   tc qdisc del dev ifb4eth0 root 2>/dev/null
+   cs_disable_ifb4eth0
    tc qdisc replace dev ifb4eth0 root cake bandwidth 2gbit ${iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 48 mpu 64
+}
+
+cs_disable_eth0 () {
+   tc qdisc del dev eth0 root 2>/dev/null
+}
+
+cs_disable_ifb4eth0 () {
+   tc qdisc del dev ifb4eth0 root 2>/dev/null
 }
 
 cs_upd_qdisc () {
