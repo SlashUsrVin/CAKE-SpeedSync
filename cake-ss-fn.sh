@@ -232,7 +232,7 @@ cs_status () {
 
    cs_pad_text "$tccake" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh"
 
-   printf "\n\n      cake-speedsync: "
+   printf "\n\n      CAKE-SpeedSync - Last Run: "
 
    dyntclog=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -3)
    printf "$dyntclog"
