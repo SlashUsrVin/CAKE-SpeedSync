@@ -219,22 +219,22 @@ cs_status () {
    ipt="$(iptables -t mangle -L --line-numbers | grep -E "Chain|DSCP")"
 
    printf "\n\n[CRON JOB - SCHEDULE - Make sure cake is re-adjusted every n hours]"
-   printf  "\n   Active Cron Entry: "
+   printf  "\n   Active Cron Entry:\n"
 
    cronj=$(crontab -l | grep cake-speedsync.sh)
 
    cs_pad_text "$cronj" "WARNING: Crontab entry is missing. Run /jffs/scripts/services-start and check again"
 
    printf "\n\n[CAKE SETTINGS]"
-   printf  "\n Active CAKE Setting:"
+   printf  "\n Active CAKE Setting:\n"
 
    tccake=$(tc qdisc | grep cake)
 
    cs_pad_text "$tccake" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh"
 
-   printf "\n\n      cake-speedsync:"
+   printf "\n\n      cake-speedsync: "
 
    dyntclog=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -3)
    printf "$dyntclog"
-   printf "\n"
+   printf "\n\n"
 }
