@@ -155,16 +155,17 @@ cs_upd_qdisc "eth0" "$qd_eMPU" #Retain mpu from webui
 cs_upd_qdisc "ifb4eth0" "$qd_iOVH" #Retain overhead from webui
 cs_upd_qdisc "ifb4eth0" "$qd_iMPU" #Retain mpu from webui
 
-#Log new cake settings
-tc qdisc | grep cake >> "$CS_PATH/cake-ss.log"
-
-#Store logs for the last 7 updates only (tail -21)
-tail -21 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
-
-#Show run details
+#Logs
 clear
-echo -e "\n\n    SpeedTest Result: --->   Download: ${DLSpeedMbps}Mbps    Upload: ${ULSpeedMbps}Mbps    Latency: ${iping}ms" 
-echo -e "    Google Ping Test: --->   Median: ${epingmedian}ms"
-echo -e "\nActive CAKE Settings:"
-tc qdisc | grep cake
-echo -e "\n\nCake-SpeedSync completed successfully!\n\n\n"
+printf "\n\n"
+{
+printf "    SpeedTest Result: --->   Download: %sMbps    Upload: %sMbps    Latency: %sms" "$DLSpeedMbps" "$ULSpeedMbps" "$iping" 
+printf "\n    Google Ping Test: --->   Median: %sms" "$epingmedian" 
+printf "\n"
+} | tee -a "$CS_PATH/cake-ss.log"
+printf "\n\nActive CAKE Settings:\n" 
+tc qdisc | grep cake | grep -oE 'dev.*' | sed 's/^/                      --->   /'
+printf "\n\nCake-SpeedSync completed successfully!\n\n\n"
+
+#Store logs for the last 7 runs only (tail -21)
+tail -21 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
