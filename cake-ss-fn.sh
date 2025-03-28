@@ -24,7 +24,7 @@ cs_enable_eth0 () {
    fi
    #Enable with default value. Speed and Latency will update once cake-speedsync runs
    cs_disable_eth0
-   tc qdisc replace dev eth0 root cake bandwidth 2gbit ${eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 48 mpu 64
+   tc qdisc replace dev eth0 root cake bandwidth 2gbit ${eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 44 mpu 84
 }
 
 cs_enable_ifb4eth0 () {
@@ -34,7 +34,7 @@ cs_enable_ifb4eth0 () {
    fi
    #Enable with default value. Speed and Latency will update once cake-speedsync runs
    cs_disable_ifb4eth0
-   tc qdisc replace dev ifb4eth0 root cake bandwidth 2gbit ${iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 48 mpu 64
+   tc qdisc replace dev ifb4eth0 root cake bandwidth 2gbit ${iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 44 mpu 84
 }
 
 cs_disable_eth0 () {
