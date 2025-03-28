@@ -8,7 +8,7 @@ Updates CAKE QoS bandwidth and latency based of the built in Ookla SpeedTest (CL
 
 ### __WARNING:__  
 1. During installation, /jffs/scripts/services-start will be replaced. If you have added any custom commands, you can find a backup of the original file in /jffs/scripts/cake-speedsync/. 
-2. MERLIN-CAKE's default Queueing Discpline are diffserv3 for outbound (eth0) and besteffort for inbound (ifb4eth0). This program will default to diffserv4 (eth0) and diffserv3 (ifb4eth0). You can change this via the provided /jffs/scripts/cake-speedsync/cake.cfg
+2. MERLIN-CAKE's default Queueing Discpline are diffserv3 for outbound (eth0) and besteffort for inbound (ifb4eth0). This program will default to diffserv4 for both. You can change this via the provided /jffs/scripts/cake-speedsync/cake.cfg
 
 ### __INSTALLATION:__  
 1. Login to your ASUS Router Web UI 
@@ -20,10 +20,12 @@ ___curl -fsSL "https://raw.githubusercontent.com/mvin321/MERLIN-cake-speedsync/m
 7. Once complete, reboot router manually.  
 
 ### __HOW IT WORKS:__  
-1. Update CAKE's bandwidth to very high (2gbit) to avoid throtlling while doing the speedtest.  
-2. Runs the built in Ookla SpeedTest (CLI) in the background to get the current download and upload speed.  
-3. Update CAKE bandwidth based from SpeedTest result.  
-4. Runs a ping test to Google (8.8.8.8). RTT is set based on the median value from the ping test and rounded to the nearset 5ms increments.
-5. Other settings are based of what was set in the QoS page (overhead & mpu).   
-6. Speedtest and dynamic updates will occur every 2 hours from 7:00 AM to 11:00 PM feel free to update the cron entry in /jffs/scripts/cake-speedsync/cake-ss-fn.sh (cs_init) after installation.  
-7. These steps are also performed every after reboot (waits 30 seconds).  
+1. Queueing Discipline is updated to fq_codel to avoid throtlling while doing the speedtest.  
+2. Runs the built in Ookla SpeedTest (CLI) in the background to get the current download and upload speed. (might cause packet loss for a few seconds not enough to break a call or a game)
+3. Runs a ping test to Google (8.8.8.8).   
+4. Update CAKE bandwidth based from SpeedTest result.
+5. For eth0 RTT is set based on the median value from the ping test and rounded to the nearset 5ms increments.   
+6. For ifb4eth0 RTT is set based on the speedtest latency and rounded to the nearset 5ms increments.   
+7. Other settings are based of what was set in the QoS page in the router's web ui (overhead & mpu).  
+8. Speedtest and dynamic updates will occur every 2 hours from 7:00 AM to 11:00 PM feel free to update the cron entry in /jffs/scripts/cake-speedsync/cake-ss-fn.sh (cs_init) after installation.
+9. These steps are also performed every after reboot (waits 10 seconds).  
