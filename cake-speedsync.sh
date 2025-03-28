@@ -2,14 +2,26 @@
 
 CS_PATH="/jffs/scripts/cake-speedsync"
 
+#On reboot, wait a few seconds to make sure tc is already active
+ctr=0
+max_wait_time=10 
+
+while [ "$ctr" -lt "$max_wait_time" ]; do
+    if tc qdisc show | grep -q "cake"; then
+        break #If tc is active, stop waiting and continue
+    fi
+     sleep 1
+     ctr=$((ctr + 1))
+done
+
 #Log start date and time
 date >> "$CS_PATH/cake-ss.log"
 
 #Source cake-speedsync related functions
 . "$CS_PATH/cake-ss-fn.sh"
    
-#If CAKE is disabled, enable it.
-qdisc=$(tc qdisc show dev eth0 root)
+#Get current CAKE settings
+qdisc=$(tc qdisc show dev eth0 root | grep cake)
 if [ -n "$qdisc" ]; then
    #Retrieve current CAKE eth0 setting. 
    cake_eth0=$(cs_get_qdisc "eth0")
@@ -23,7 +35,7 @@ if [ -n "$qdisc" ]; then
 else
    eqosenabled="0"
 fi
-qdisc=$(tc qdisc show dev ifb4eth0 root)
+qdisc=$(tc qdisc show dev ifb4eth0 root | grep cake)
 if [ -n "$qdisc" ]; then
    cake_ifb4eth0=$(cs_get_qdisc "ifb4eth0")
    set -- $(echo "$cake_ifb4eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
@@ -164,7 +176,7 @@ printf "\n    Google Ping Test: --->   Median: %sms" "$epingmedian"
 printf "\n"
 } | tee -a "$CS_PATH/cake-ss.log"
 printf "\n\nActive CAKE Settings:\n" 
-tc qdisc | grep cake | grep -oE 'dev.*' | sed 's/^/                      --->   /'
+tc qdisc | grep "eth0 root" | grep -oE 'dev.*' | sed 's/^/                      --->   /'
 printf "\n\nCake-SpeedSync completed successfully!\n\n\n"
 
 #Store logs for the last 7 runs only (tail -21)
