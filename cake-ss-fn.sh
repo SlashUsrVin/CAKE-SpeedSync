@@ -218,6 +218,8 @@ cs_status () {
 
    ipt="$(iptables -t mangle -L --line-numbers | grep -E "Chain|DSCP")"
 
+   cs_pad_text "$ipt" ""
+
    printf "\n\n[CRON JOB - SCHEDULE - Make sure cake is re-adjusted every n hours]"
    printf  "\n   Active Cron Entry:\n"
 
@@ -228,11 +230,17 @@ cs_status () {
    printf "\n\n[CAKE SETTINGS]"
    printf  "\n Active CAKE Setting:\n"
 
-   tccake=$(tc qdisc | grep cake)
+   allqdisc=$(tc qdisc | grep "eth0 root")
 
-   cs_pad_text "$tccake" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh"
+   cs_pad_text "" "$allqdisc" 
+   
+   cakeqdisc=$(tc qdisc | grep cake)
 
-   printf "\n\n      CAKE-SpeedSync - Last Run: "
+   if [ -z "$cakeqdisc" ]; then
+      cs_pad_text "" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh" 
+   fi
+   
+   printf "\n\n      CAKE-SpeedSync: --->   Last Run: "
 
    dyntclog=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -3)
    printf "$dyntclog"
