@@ -23,8 +23,8 @@ cs_init () {
    cru d cake-speedsync
 
    #Re-add cron job
-   #Run every 2 hours from 7:00 AM to 11:00 PM
-   cru a cake-speedsync "0 7-23/2 * * * /jffs/scripts/cake-speedsync/cake-speedsync.sh"   
+   #Run every 3 hours from 7:00 AM to 11:59 PM and 12 AM to 1 AM"
+   cru a cake-speedsync "0 7-23/3,0-1 * * * /jffs/scripts/cake-speedsync/cake-speedsync.sh"   
 }
 
 cs_enable_default () {
