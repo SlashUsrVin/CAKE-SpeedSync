@@ -28,4 +28,4 @@ ___curl -fsSL "https://raw.githubusercontent.com/mvin321/MERLIN-cake-speedsync/m
 5. For eth0 RTT is set based on the median value from the ping test and rounded to the nearest 5ms increments (min 5ms max 100ms)
 6. For ifb4eth0 RTT is set based on the speedtest latency and rounded to the nearest 5ms increments. (min 5ms max 100ms)
 7. Other settings are based of what was set in the QoS page in the router's web ui (overhead & mpu).  
-8. Speedtest and dynamic updates will occur every 2 hours from 7:00 AM to 11:00 PM feel free to update the cron entry in /jffs/scripts/cake-speedsync/cake-ss-fn.sh (cs_init) after installation. Note that these steps are also performed every time the router reboots.  
+8. Speedtest and dynamic updates will occur every 3 hours from 7:00 AM to 1:00 AM feel free to update the cron entry in /jffs/scripts/cake-speedsync/cake-ss-fn.sh (cs_init) after installation. Note that these steps are also performed every time the router reboots.  
