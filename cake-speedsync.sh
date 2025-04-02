@@ -14,6 +14,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
+logparm="$1"
+
+function log () {
+   msg="$1" #Assign 1st ($1) argument to msg"
+   shift    #Remove msg (=$1) as 1st argument since msg can also contain multiple arguments (%s). This will avoid the whole string (msg) to be assigned to itself.
+   printf -- "$msg\n" "$@"
+}
+
+log "Running CAKE-SpeedSync with logging...."
 
 CS_PATH="/jffs/scripts/cake-speedsync"
 
@@ -22,11 +31,15 @@ ctr=0
 max_wait_time=10 
 
 while [ "$ctr" -lt "$max_wait_time" ]; do
-    if tc qdisc show | grep -q "cake"; then
-        break #If tc is active, stop waiting and continue
-    fi
-     sleep 1
-     ctr=$((ctr + 1))
+   if tc qdisc show | grep -q "cake"; then
+      break #If tc is active, stop waiting and continue
+   fi
+
+   if [ "$ctr" -eq 0 ]; then
+      log "Waiting for qdisc..."
+   fi
+   sleep 1
+   ctr=$((ctr + 1))
 done
 
 #Log start date and time
@@ -37,6 +50,8 @@ date >> "$CS_PATH/cake-ss.log"
    
 #Get current CAKE settings
 qdisc=$(tc qdisc show dev eth0 root | grep cake)
+log "\nCurrent CAKE settings:"
+log "$qdisc"
 if [ -n "$qdisc" ]; then
    #Retrieve current CAKE eth0 setting. 
    cake_eth0=$(cs_get_qdisc "eth0")
@@ -51,6 +66,7 @@ else
    eqosenabled="0"
 fi
 qdisc=$(tc qdisc show dev ifb4eth0 root | grep cake)
+log "$qdisc"
 if [ -n "$qdisc" ]; then
    cake_ifb4eth0=$(cs_get_qdisc "ifb4eth0")
    set -- $(echo "$cake_ifb4eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
@@ -77,53 +93,101 @@ if [ -f "$CS_PATH/cake.cfg" ]; then
          cf_iSCH="$cfg"
       fi; done < "$CS_PATH/cake.cfg"
 else
-   cf_eSCH="diffserv4" #default eth0 to diffserv4
-   cf_iSCH="diffserv4" #default ifb4eth0 to diffserv4
+   cf_eSCH="diffserv3" #default cake merlin setting
+   cf_iSCH="besteffort" #default cake merlin setting
 fi
 
-#For checking if queue discpline was changed from the cfg file. If so, delete and re-add CAKE
-eRep="0" 
-if [ "$qd_eSCH" != "$cf_eSCH" ] && [ -n "$cf_eSCH" ]; then
-   eRep="1"
-   eScheme="$cf_eSCH"
-else
-   eScheme="$qd_eSCH"
+eScheme="$cf_eSCH"
+iScheme="$cf_iSCH"
+
+log "\n$CS_PATH/cake.cfg"
+log "$(cat $CS_PATH/cake.cfg)"
+log "cf_eSCH=${cf_eSCH} cf_iSCH=${cf_iSCH}"
+log "qd_eSCH=${qd_eSCH} qd_iSCH=${qd_iSCH}"
+
+log "eScheme=${eScheme} iScheme=${iScheme}"
+
+#Enable CAKE with default settings for speedtest
+cs_default_eth0 "diffserv3"      #force to diffserv3 for speedtest
+cs_default_ifb4eth0 "diffserv3"  #force to diffserv3 for speedtest
+
+#Use default MPU and Overhead if not yet set in the web UI
+if [ "$eqosenabled" -eq 0 ]; then
+   cake_eth0=$(cs_get_qdisc "eth0")
+   set -- $(echo "$cake_eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
+   qd_eMPU="$6 $7"
+   qd_eOVH="$8 $9"
+fi
+if [ "$iqosenabled" -eq 0 ]; then
+   cake_ifb4eth0=$(cs_get_qdisc "ifb4eth0")
+   set -- $(echo "$cake_ifb4eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
+   qd_iMPU="$6 $7"
+   qd_iOVH="$8 $9"
 fi
 
-iRep="0"
-if [ "$qd_iSCH" != "$cf_iSCH" ] && [ -n "$cf_iSCH" ]; then
-   iRep="1"
-   iScheme="$cf_iSCH"
-else
-   iScheme="$qd_iSCH"   
-fi
-
-#Switch to fq_codel to prevent throtlling during speedtest
-cs_disable_eth0
-tc qdisc replace dev eth0 root fq_codel
-cs_disable_ifb4eth0
-tc qdisc replace dev ifb4eth0 root fq_codel
+log "\nUsing the following Queueing Discipline for ookla speedtest...."
+qdisc=$(tc qdisc show dev eth0 root | grep cake)
+log "$qdisc"
+qdisc=$(tc qdisc show dev ifb4eth0 root | grep cake)
+log "$qdisc"
 
 #Run Speedtest and generate result in json format
-spdtstresjson=$(ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json)
+json="$CS_PATH/spdtstresjson.json"
+> "$json"
+log "\nRunning speedtest..."
+((ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json > "$json") &)
+
+log "Capturing network throughput..."
+
+ctr=0
+max_wait_time=30
+maxeBps=0
+maxiBps=0
+
+while [ "$ctr" -lt "$max_wait_time" ]; do
+
+    dl=$(cs_net_dev_get "ifb4eth0")
+    ul=$(cs_net_dev_get "eth0")
+
+    if [ -n "$prevdl" ] || [ -n "$prevul" ]; then
+       eBps=$(expr "$dl" - "$prevdl") #Download rate in Bps
+       iBps=$(expr "$ul" - "$prevul") #Upload rate in Bps
+   
+       log "$(date) download: $(cs_to_mbit ${eBps})MBps   upload: $(cs_to_mbit ${iBps})Mbps"
+
+       if [ "$eBps" -gt "$maxeBps" ]; then
+          maxeBps=$eBps
+       fi
+
+       if [ "$iBps" -gt "$maxiBps" ]; then
+          maxiBps=$iBps
+       fi
+    fi
+
+    if [  -s "$json" ]; then
+        break #SpeedTest is done
+    fi
+    prevdl=$dl
+    prevul=$ul
+    sleep 1
+    ctr=$((ctr + 1))
+done
+
+spdtstresjson=$(cat "$json")
 
 #Restore previous CAKE settings and exit if speedtest fails
-if [ $? -ne 0 ] || [ -z "$spdtstresjson" ]; then
+if [ ! -s "$json" ]; then
    echo "Speed test failed!" >> cake-ss.log
    
    #If enabled before speedtest, restore previous CAKE settings. Otherwise, delete qdisc for eth0
    if [ "$eqosenabled" == "1" ]; then
-      cs_enable_eth0 "$qd_eSCH"
-      cs_upd_qdisc "eth0" "$qd_eSPD"
-      cs_upd_qdisc "eth0" "$qd_eRTT"
+      cs_add_eth0 "$qd_eSCH" "$qd_eSPD" "$qd_eRTT" "$qd_eOVH" "$qd_eMPU"
    else
       cs_disable_eth0
    fi
    #If enabled before speedtest, restore previous CAKE settings. Otherwise, delete qdisc for ifb4eth0
    if [ "$iqosenabled" == "1" ]; then
-      cs_enable_ifb4eth0 "$qd_iSCH"
-      cs_upd_qdisc "ifb4eth0" "$qd_iSPD"
-      cs_upd_qdisc "ifb4eth0" "$qd_iRTT"
+      cs_add_ifb4eth0 "$qd_iSCH" "$qd_iSPD" "$qd_iRTT" "$qd_iOVH" "$qd_iMPU"
    else
       cs_disable_ifb4eth0
    fi
@@ -131,13 +195,15 @@ if [ $? -ne 0 ] || [ -z "$spdtstresjson" ]; then
    exit 1
 fi
 
-#Extract bandwidth from json
-DLSpeedbps=$(echo "$spdtstresjson" | grep -oE '\],"bandwidth":[0-9]+' | grep -oE [0-9]+)
-ULSpeedbps=$(echo "$spdtstresjson" | grep -oE '"upload":\{"bandwidth":[0-9]+' | grep -oE [0-9]+)
+log "\nCalculating bandwidth...."
 
-#Convert bandwidth to Mbits - This formula is based from the speedtest in QoS speedtest tab
-DLSpeedMbps=$(((DLSpeedbps * 8) / 1000000))
-ULSpeedMbps=$(((ULSpeedbps * 8) / 1000000))
+#Convert max tx rate from net/dev to Mbps
+maxDLMbps=$(cs_to_mbit "$maxeBps")
+maxULMbps=$(cs_to_mbit "$maxiBps")
+
+#Set 95% of max speed for CAKE QoS
+DLSpeedMbps=$(((maxDLMbps * 95) / 100))
+ULSpeedMbps=$(((maxULMbps * 95) / 100))
 
 #RTT multiple - basis for both eth0 and ifb4eth0
 rttm=5 
@@ -147,11 +213,13 @@ rttm=5
 iping=$(echo "$spdtstresjson" | grep -oE '"latency":\s?[0-9]+(\.[0-9]*)?' | grep -oE '[0-9]+(\.[0-9]*)?')
 ipingwhole=$(echo "$iping" | sed -E 's/\.[0-9]+//')
 
+log "\nGoogle ping test in progress...."
 #The RTT value for eth0 is determined based on the ping response from Google. 
 eping=$(ping -c 10 8.8.8.8 | grep -oE 'time\=[0-9]+(.[0-9]*)?\sms' | grep -oE '[0-9]+(.[0-9]*)?')
 epingmedian=$(echo "$eping" | awk 'NR==6')
 epingwhole=$(echo "$epingmedian" | sed -E 's/\.[0-9]+//')
 
+log "\nCalculating rtt...."
 #The selected RTT for eth0 and ifb4eth0 will be rounded to the nearest multiple of (rttm value) for consistency.
 ertt=$(( (epingwhole + rttm - 1) / rttm * rttm )) #eth0
 irtt=$(( (ipingwhole + rttm - 1) / rttm * rttm )) #ifb4eth0
@@ -164,35 +232,21 @@ if [ $irtt -ge 95 ]; then
    irtt=100 #default cake rtt
 fi
 
-#Re-enable CAKE and update settings
-cs_enable_eth0 "$eScheme"   #Replace with the new selected Queueing Discipline
-cs_enable_ifb4eth0 "$iScheme"   #Replace with the new selected Queueing Discipline
-
-#Update bandwidth base from speedtest. 
-cs_upd_qdisc "eth0" "bandwidth ${ULSpeedMbps}mbit"
-cs_upd_qdisc "ifb4eth0" "bandwidth ${DLSpeedMbps}mbit"
-
-#Apply rtt
-cs_upd_qdisc "eth0" "rtt ${ertt}ms"      #From speedtest latency
-cs_upd_qdisc "ifb4eth0" "rtt ${irtt}ms"  #From google ping response time
-
-#Retain mpu and overhead (from web ui - cake QoS Page)
-cs_upd_qdisc "eth0" "$qd_eOVH" #Retain overhead from webui
-cs_upd_qdisc "eth0" "$qd_eMPU" #Retain mpu from webui
-cs_upd_qdisc "ifb4eth0" "$qd_iOVH" #Retain overhead from webui
-cs_upd_qdisc "ifb4eth0" "$qd_iMPU" #Retain mpu from webui
+#Re-enable CAKE with updated settings
+cs_add_eth0 "$eScheme" "bandwidth ${ULSpeedMbps}mbit" "rtt ${ertt}ms" "$qd_eOVH" "$qd_eMPU"
+cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "rtt ${irtt}ms" "$qd_iOVH" "$qd_iMPU"
 
 #Logs
-clear
-printf "\n\n"
+log "\n"
 {
-printf "    SpeedTest Result: --->   Download: %sMbps    Upload: %sMbps    Latency: %sms" "$DLSpeedMbps" "$ULSpeedMbps" "$iping" 
-printf "\n    Google Ping Test: --->   Median: %sms" "$epingmedian" 
-printf "\n"
+log "       /proc/net/dev: --->   Download: %sMbps(Max) -> %sMbps(95%%)    Upload: %sMbps(Max) -> %sMbps(95%%)" "$maxDLMbps" "$DLSpeedMbps" "$maxULMbps" "$ULSpeedMbps"
+log "   SpeedTest Latency: --->   Latency: %sms" "$iping" 
+log "    Google Ping Test: --->   Median: %sms" "$epingmedian" 
+log ""
 } | tee -a "$CS_PATH/cake-ss.log"
-printf "\n\nActive CAKE Settings:\n" 
+log "\n\nActive CAKE Settings:\n" 
 tc qdisc | grep "eth0 root" | grep -oE 'dev.*' | sed 's/^/                      --->   /'
-printf "\n\nCake-SpeedSync completed successfully!\n\n\n"
+log "\n\nCake-SpeedSync completed successfully!\n\n\n"
 
-#Store logs for the last 7 runs only (tail -21)
-tail -21 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
+#Store logs for the last 7 runs only (tail -24)
+tail -24 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
