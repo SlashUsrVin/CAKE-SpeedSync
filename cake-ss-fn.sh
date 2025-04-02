@@ -28,30 +28,50 @@ cs_init () {
 }
 
 cs_enable_default () {
-   eScheme="$1"
-   iScheme="$2"
-   cs_enable_eth0 "$eScheme"
-   cs_enable_ifb4eth0 "$iScheme"
+   cs_eScheme="$1"
+   cs_iScheme="$2"
+   cs_default_eth0 "$cs_eScheme"
+   cs_default_ifb4eth0 "$cs_iScheme"
 }
 
-cs_enable_eth0 () {
-   eScheme="$1"
-   if [ -z "$eScheme" ]; then
-      eScheme="diffserv4"
+cs_default_eth0 () {
+   cs_eScheme="$1"
+   if [ -z "$cs_eScheme" ]; then
+      cs_eScheme="diffserv3"
    fi
    #Enable with default value. Speed and Latency will update once cake-speedsync runs
    cs_disable_eth0
-   tc qdisc replace dev eth0 root cake bandwidth 2gbit ${eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 25ms noatm overhead 44 mpu 84
+   tc qdisc add dev eth0 root cake bandwidth 100gbit ${cs_eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 50ms noatm overhead 54 mpu 64
 }
 
-cs_enable_ifb4eth0 () {
-   iScheme="$1"
-   if [ -z "$iScheme" ]; then
-      iScheme="diffserv4"
+cs_default_ifb4eth0 () {
+   cs_iScheme="$1"
+   if [ -z "$cs_iScheme" ]; then
+      cs_iScheme="diffserv3"
    fi
    #Enable with default value. Speed and Latency will update once cake-speedsync runs
    cs_disable_ifb4eth0
-   tc qdisc replace dev ifb4eth0 root cake bandwidth 2gbit ${iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 25ms noatm overhead 44 mpu 84
+   tc qdisc add dev ifb4eth0 root cake bandwidth 100gbit  ${cs_iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 50ms noatm overhead 54 mpu 64
+}
+
+cs_add_eth0 () {
+   cs_eScheme="$1"
+   cs_Speed="$2"
+   cs_RTT="$3"
+   cs_Overhead="$4"
+   cs_MPU="$5"
+   cs_disable_eth0
+   tc qdisc add dev eth0 root cake ${cs_Speed} ${cs_eScheme} dual-srchost nat nowash no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}
+}
+
+cs_add_ifb4eth0 () {
+   cs_iScheme="$1"
+   cs_Speed="$2"
+   cs_RTT="$3"
+   cs_Overhead="$4"
+   cs_MPU="$5"
+   cs_disable_ifb4eth0
+   tc qdisc add dev ifb4eth0 root cake ${cs_Speed} ${cs_iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}
 }
 
 cs_disable_eth0 () {
@@ -62,25 +82,69 @@ cs_disable_ifb4eth0 () {
    tc qdisc del dev ifb4eth0 root 2>/dev/null
 }
 
+function cs_trim () {
+    cs_str="$1"
+    cs_trimmed=$(echo "$cs_str" | awk '{$0=$0;print}')
+    echo "$cs_trimmed"
+}
+
+function cs_net_dev_get () {
+   cs_intfc="$1"
+   if [ "$cs_intfc" == "eth0" ]; then
+      cs_bytes=$(grep -w "$cs_intfc:" /proc/net/dev | awk '{print $10}') #get TX rate for sent packets (eth0)
+   else 
+      cs_bytes=$(grep -w "$cs_intfc:" /proc/net/dev | awk '{print $2}')  #get RX rate for received packets (ifb4eth0)
+   fi
+   echo "${cs_bytes:-0}"
+}
+
+function cs_net_dev_show () {
+   cs_ctr=0
+   cs_maxwait=30
+
+   while [ "$cs_ctr" -lt "$cs_maxwait" ]; do
+      cs_rx=$(cs_net_dev_get "ifb4eth0")
+      cs_tx=$(cs_net_dev_get "eth0")
+
+      if [ -n "$cs_prevrx" ] || [ -n "$cs_prevtx" ]; then
+         cs_rxBps=$(expr "$cs_rx" - "$cs_prevrx")
+         cs_txBps=$(expr "$cs_tx" - "$cs_prevtx")
+
+         echo "$(date)  -->  Download: $(cs_to_mbit ${cs_rxBps})Mbps    Upload: $(cs_to_mbit ${cs_txBps})Mbps"
+      fi
+
+      cs_prevrx=$cs_rx
+      cs_prevtx=$cs_tx
+      sleep 1
+      cs_ctr=$((cs_ctr + 1))
+   done
+}
+
+function cs_to_mbit () {
+   cs_bytes="$1"
+   cs_mbits=$(((cs_bytes * 8) / 1000000))
+   echo "$cs_mbits"
+}
+
 cs_upd_qdisc () {
-   cake_intf="$1"
-   cake_parm="$2"
-   tc qdisc change dev ${cake_intf} root cake ${cake_parm}
+   cs_cake_intf="$1"
+   cs_cake_parm="$2"
+   tc qdisc change dev ${cs_cake_intf} root cake ${cs_cake_parm}
 }
 
 cs_get_qdisc () {
-   intfc=$1
-   if [ -z "$1" ]; then
+   cs_intfc=$1
+   if [ -z "$cs_intfc" ]; then
       echo ""
    else
-      tcqparm=$(tc qdisc show dev "$intfc" root)
-      tcqparmpart=$(echo "$tcqparm" | grep -oE 'bandwidth\s(unlimited)?([0-9]+[a-zA-Z]{3,4})?\s[a-zA-Z]+([0-9]+)?')
-      set -- $(echo "$tcqparmpart" | awk '{print $1, $2, $3}'); spd="$1 $2"; sch="$3"
-      rtt=$(echo "$tcqparm" | grep -oE 'rtt\s[0-9]+ms')
-      mpu=$(echo "$tcqparm" | grep -oE 'mpu\s[0-9]+')
-      ovh=$(echo "$tcqparm" |grep -oE 'overhead\s[0-9]+')
+      cs_tcqparm=$(tc qdisc show dev "$cs_intfc" root)
+      cs_tcqparmpart=$(echo "$cs_tcqparm" | grep -oE 'bandwidth\s(unlimited)?([0-9]+[a-zA-Z]{3,4})?\s[a-zA-Z]+([0-9]+)?')
+      set -- $(echo "$cs_tcqparmpart" | awk '{print $1, $2, $3}'); cs_spd="$1 $2"; cs_sch="$3"
+      cs_rtt=$(echo "$cs_tcqparm" | grep -oE 'rtt\s[0-9]+ms')
+      cs_mpu=$(echo "$cs_tcqparm" | grep -oE 'mpu\s[0-9]+')
+      cs_ovh=$(echo "$cs_tcqparm" | grep -oE 'overhead\s[0-9]+')
 
-      echo $spd $sch $rtt $mpu $ovh
+      echo $cs_spd $cs_sch $cs_rtt $cs_mpu $cs_ovh
    fi
 }
 
@@ -93,9 +157,9 @@ cs_pad_text () {
 }
 
 cs_chk_ip () {
-   pvalue=$1
-   ip=$(echo "$pvalue" | grep -oE '^192\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
-   if [ -z "$ip" ]; then
+   cs_pvalue=$1
+   cs_ip=$(echo "$cs_pvalue" | grep -oE '^192\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
+   if [ -z "$cs_ip" ]; then
       echo 0
    else
       echo 1
@@ -103,22 +167,22 @@ cs_chk_ip () {
 }
 
 cs_chk_port () {
-   pvalue=$1
-   set -- $(echo "$pvalue" | awk -F: '{print $1,$2,$3}'); p1="$1"; p2="$2"; p3="$3"
+   cs_pvalue=$1
+   set -- $(echo "$cs_pvalue" | awk -F: '{print $1,$2,$3}'); cs_p1="$1"; cs_p2="$2"; cs_p3="$3"
 
-   if [ -n "$p3" ]; then
+   if [ -n "$cs_p3" ]; then
       echo 0 #wrong port range format
       return
    fi
 
-   for port in "$p1" "$p2"; do
-      pchk=$(echo $port | grep -oE '^[0-9]{1,5}$')
-      if [ -z "$pchk" ]; then
+   for cs_port in "$cs_p1" "$cs_p2"; do
+      cs_pchk=$(echo $cs_port | grep -oE '^[0-9]{1,5}$')
+      if [ -z "$cs_pchk" ]; then
          echo 0 #wrong format
          return
       fi
 
-      if [ $pchk -le 0 ] || [ $pchk -ge 65536 ]; then
+      if [ $cs_pchk -le 0 ] || [ $cs_pchk -ge 65536 ]; then
          echo 0 #wrong port value
          return
       fi
@@ -128,104 +192,104 @@ cs_chk_port () {
 }
 
 cs_chk_proto () {
-   pvalue=$1
+   cs_pvalue=$1
 
-   case "$pvalue" in 
+   case "$cs_pvalue" in 
       tcp|TCP|udp|UDP) echo 1;;
       *) echo 0;;
    esac
 }
 
 cs_chk_prio () {
-   pvalue=$1
+   cs_pvalue=$1
    
-   case "$pvalue" in
+   case "$cs_pvalue" in
       1|2|3|4) echo 1 ;; 
       *) echo 0 ;;  
    esac      
 }
 
 cs_qos_udp () {
-   $proto="udp"
-   $port=$1
-   $prio=$2
-   $ip=$3
+   cs_proto="udp"
+   cs_port=$1
+   cs_prio=$2
+   cs_ip=$3
 
-   cs_pkt_qos $ip $port $prio $proto
+   cs_pkt_qos $cs_ip $cs_port $cs_prio $cs_proto
 }
 
 cs_qos_tcp () {
-   $proto="tcp"
-   $port=$1
-   $prio=$2
-   $ip=$3
+   cs_proto="tcp"
+   cs_port=$1
+   cs_prio=$2
+   cs_ip=$3
 
-   cs_pkt_qos $ip $port $prio $proto   
+   cs_pkt_qos $cs_ip $cs_port $cs_prio $cs_proto   
 }
 
 cs_qos_rfr () {
-   awk '{print $1, $2, $3, $4}' /jffs/scripts/cake-speedsync/qosports 2>/dev/null | while read -r ip port tag protocol; do
-   cs_pkt_qos $ip $port $tag $protocol; done 
+   awk '{print $1, $2, $3, $4}' /jffs/scripts/cake-speedsync/qosports 2>/dev/null | while read -r cs_ip cs_port cs_tag cs_protocol; do
+   cs_pkt_qos $cs_ip $cs_port $cs_tag $cs_protocol; done 
 
 }
 
 cs_pkt_qos () {
-   ip=$1
-   port=$2
+   cs_ip=$1
+   cs_port=$2
 
    if [ -z "$3" ]; then
-      dscptag="EF" #If $2 is blank set highest priority
+      cs_dscptag="EF" #If $2 is blank set highest priority
    else
       case "$3" in
-         1) dscptag="EF" ;;  #Highest
-         2) dscptag="CS5" ;; #High
-         3) dscptag="CS0" ;; #Normal
-         4) dscptag="CS1" ;; #Low
-         *) dscptag="EF" ;;  
+         1) cs_dscptag="EF" ;;  #Highest
+         2) cs_dscptag="CS5" ;; #High
+         3) cs_dscptag="CS0" ;; #Normal
+         4) cs_dscptag="CS1" ;; #Low
+         *) cs_dscptag="EF" ;;  
       esac
    fi
    
    if [ -z "$4" ]; then
-      proto="udp"
+      cs_proto="udp"
    else
-      proto="$4"
+      cs_proto="$4"
    fi
 
-   cmd="iptables -t mangle -%s %s -p $proto -%s $ip --%s $port -j DSCP --set-dscp-class $dscptag"
+   cs_cmd="iptables -t mangle -%s %s -p $cs_proto -%s $cs_ip --%s $cs_port -j DSCP --set-dscp-class $cs_dscptag"
    
    #Remove first if existing then re-apply rule - prevent duplicate entries and cluttering iptables
-   for mode in "D" "A"; do
-      for chain in "FORWARD" "POSTROUTING"; do
-         case "$chain" in
+   for cs_mode in "D" "A"; do
+      for cs_chain in "FORWARD" "POSTROUTING"; do
+         case "$cs_chain" in
             FORWARD) 
-               pmatch="dport"
-               imatch="d"
+               cs_pmatch="dport"
+               cs_imatch="d"
                ;;
             POSTROUTING)
-               pmatch="sport"
-               imatch="s"
+               cs_pmatch="sport"
+               cs_imatch="s"
                ;;
          esac
 
-         if [[ "$mode" == "D" ]]; then
-            eval $(printf "$cmd 2>/dev/null" "$mode" "$chain" "$imatch" "$pmatch")
+         if [[ "$cs_mode" == "D" ]]; then
+            eval $(printf "$cs_cmd 2>/dev/null" "$cs_mode" "$cs_chain" "$cs_imatch" "$cs_pmatch")
          else
-            eval $(printf "$cmd" "$mode" "$chain" "$imatch" "$pmatch")
+            eval $(printf "$cs_cmd" "$cs_mode" "$cs_chain" "$cs_imatch" "$cs_pmatch")
          fi         
       done
    done
 
    #Record ports for re-applying iptables on reboot
    rm -f /jffs/scripts/cake-speedsync/qosports
-   iptables -t mangle -S | awk '/PREROUTING/ && /DSCP/ {print $4, $10, $NF, $6}' | while read -r xip xport xhextag xproto; do
-      case "$xhextag" in
-         0x2e) xtag="1";;
-         0x28) xtag="2";;
-         0x00) xtag="3";;
-         0x08) xtag="4";;
-         *) xtag="3";;
+   iptables -t mangle -S | awk '/PREROUTING/ && /DSCP/ {print $4, $10, $NF, $6}' | while read -r cs_xip cs_xport cs_xhextag cs_xproto; do
+      case "$cs_xhextag" in
+         0x2e) cs_xtag="1";;
+         0x28) cs_xtag="2";;
+         0x00) cs_xtag="3";;
+         0x08) cs_xtag="4";;
+         *) cs_xtag="3";;
       esac
-      echo "$ip $xport $xtag $xproto" >> /jffs/scripts/cake-speedsync/qosports; done
+      echo "$cs_ip $cs_xport $cs_xtag $cs_xproto" >> /jffs/scripts/cake-speedsync/qosports; done
    
 }
 
@@ -233,33 +297,33 @@ cs_status () {
    echo -e "\n[DSCP RULES]"
    echo  "    Active DSCP Rule:"
 
-   ipt="$(iptables -t mangle -L --line-numbers | grep -E "Chain|DSCP")"
+   cs_ipt="$(iptables -t mangle -L --line-numbers | grep -E "Chain|DSCP")"
 
-   cs_pad_text "$ipt" ""
+   cs_pad_text "$cs_ipt" ""
 
    printf "\n\n[CRON JOB - SCHEDULE - Make sure cake is re-adjusted every n hours]"
    printf  "\n   Active Cron Entry:\n"
 
-   cronj=$(crontab -l | grep cake-speedsync.sh)
+   cs_cronj=$(crontab -l | grep cake-speedsync.sh)
 
-   cs_pad_text "$cronj" "WARNING: Crontab entry is missing. Run /jffs/scripts/services-start and check again"
+   cs_pad_text "$cs_cronj" "WARNING: Crontab entry is missing. Run /jffs/scripts/services-start and check again"
 
    printf "\n\n[CAKE SETTINGS]"
    printf  "\n Active CAKE Setting:\n"
 
-   allqdisc=$(tc qdisc | grep "eth0 root")
+   cs_allqdisc=$(tc qdisc | grep "eth0 root")
 
-   cs_pad_text "" "$allqdisc" 
+   cs_pad_text "" "$cs_allqdisc" 
    
-   cakeqdisc=$(tc qdisc | grep cake)
+   cs_cakeqdisc=$(tc qdisc | grep cake)
 
-   if [ -z "$cakeqdisc" ]; then
+   if [ -z "$cs_cakeqdisc" ]; then
       cs_pad_text "" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh" 
    fi
    
    printf "\n\n      CAKE-SpeedSync: --->   Last Run: "
 
-   dyntclog=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -3)
-   printf "$dyntclog"
+   cs_dyntclog=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -4)
+   printf "$cs_dyntclog"
    printf "\n\n"
 }
