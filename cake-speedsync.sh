@@ -145,34 +145,41 @@ ctr=0
 max_wait_time=60 #max wait time before quitting
 maxeBps=0
 maxiBps=0
-
+rank2iBps=0
+rank2eBps=0
 while [ "$ctr" -lt "$max_wait_time" ]; do
 
-    dl=$(cs_net_dev_get "ifb4eth0")
-    ul=$(cs_net_dev_get "eth0")
+   dl=$(cs_net_dev_get "ifb4eth0")
+   ul=$(cs_net_dev_get "eth0")
 
-    if [ -n "$prevdl" ] || [ -n "$prevul" ]; then
-       eBps=$(expr "$dl" - "$prevdl") #Download rate in Bps
-       iBps=$(expr "$ul" - "$prevul") #Upload rate in Bps
+   if [ -n "$prevdl" ] && [ -n "$prevul" ]; then
+      iBps=$(expr "$dl" - "$prevdl") #Download rate in Bps
+      eBps=$(expr "$ul" - "$prevul") #Upload rate in Bps
    
-       log "$(date) download: $(cs_to_mbit ${eBps})MBps   upload: $(cs_to_mbit ${iBps})Mbps"
+      log "$(date) download: $(cs_to_mbit ${iBps})MBps   upload: $(cs_to_mbit ${eBps})Mbps"
 
-       if [ "$eBps" -gt "$maxeBps" ]; then
-          maxeBps=$eBps
-       fi
+      if [ "$eBps" -gt "$maxeBps" ]; then
+         rank2eBps=$maxeBps #2nd highest to try to account for burst speed       
+         maxeBps=$eBps
+      elif [ "$eBps" -gt "$rank2eBps" ]; then
+         rank2eBps=$eBps #2nd highest to try to  account for burst speed       
+      fi
 
-       if [ "$iBps" -gt "$maxiBps" ]; then
-          maxiBps=$iBps
-       fi
-    fi
+      if [ "$iBps" -gt "$maxiBps" ]; then
+         rank2iBps=$maxiBps #2nd highest to try to  account for burst speed
+         maxiBps=$iBps
+      elif [ "$iBps" -gt "$rank2iBps" ]; then
+         rank2iBps=$iBps #2nd highest to try to  account for burst speed
+      fi
+   fi
 
-    if [  -s "$json" ]; then
-        break #SpeedTest is done
-    fi
-    prevdl=$dl
-    prevul=$ul
-    sleep 1
-    ctr=$((ctr + 1))
+   if [  -s "$json" ]; then
+      break #SpeedTest is done
+   fi
+   prevdl=$dl
+   prevul=$ul
+   sleep 1
+   ctr=$((ctr + 1))
 done
 
 spdtstresjson=$(cat "$json")
@@ -206,12 +213,15 @@ spdDL=$(cs_to_mbit "$spdDL")
 spdUL=$(cs_to_mbit "$spdUL")
 
 #Convert max tx rate from net/dev to Mbps
-maxDLMbps=$(cs_to_mbit "$maxeBps")
-maxULMbps=$(cs_to_mbit "$maxiBps")
+maxDLMbps=$(cs_to_mbit "$maxiBps")
+maxULMbps=$(cs_to_mbit "$maxeBps")
 
-#Set 95% of max speed for CAKE QoS
-DLSpeedMbps=$(((maxDLMbps * 95) / 100))
-ULSpeedMbps=$(((maxULMbps * 95) / 100))
+r2DLMbps=$(cs_to_mbit "$rank2iBps")
+r2ULMbps=$(cs_to_mbit "$rank2eBps")
+
+#Set 95% of identified max speed for CAKE QoS
+DLSpeedMbps=$(((r2DLMbps * 95) / 100))
+ULSpeedMbps=$(((r2ULMbps * 95) / 100))
 
 #RTT multiple - basis for both eth0 and ifb4eth0
 rttm=5 
@@ -247,7 +257,7 @@ cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "rtt ${irtt}ms" "$qd_i
 #Logs
 printf "\n\n"
 {
-printf "    Network Analysis: --->   Download: %sMbps(Max) -> %sMbps(95%%)    Upload: %sMbps(Max) -> %sMbps(95%%)" "$maxDLMbps" "$DLSpeedMbps" "$maxULMbps" "$ULSpeedMbps"
+printf "    Network Analysis: --->   Download: %sMbps(Max) %sMbps(rank 2) -> %sMbps(95%%)    Upload: %sMbps(Max) %sMbps(rank 2) -> %sMbps(95%%)" "$maxDLMbps" "$r2DLMbps" "$DLSpeedMbps" "$maxULMbps" "$r2ULMbps" "$ULSpeedMbps"
 printf "\n    SpeedTest Result: --->   Download: %sMbps    Upload: %sMbps    Latency: %sms" "$spdDL" "$spdUL" "$iping" 
 printf "\n    Google Ping Test: --->   Median: %sms" "$epingmedian" 
 printf "\n"
