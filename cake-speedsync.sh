@@ -18,11 +18,17 @@ logparm="$1"
 
 function log () {
    msg="$1" #Assign 1st ($1) argument to msg"
-   shift    #Remove msg (=$1) as 1st argument since msg can also contain multiple arguments (%s). This will avoid the whole string (msg) to be assigned to itself.
-   printf -- "$msg\n" "$@"
+   if [ "$logparm" == "logging" ]; then
+      shift    #Remove msg (=$1) as 1st argument since msg can also contain multiple arguments (%s). This will avoid the whole string (msg) to be assigned to itself.
+      printf -- "$msg\n" "$@"
+   fi
 }
 
-log "Running CAKE-SpeedSync with logging...."
+log "\nRunning CAKE-SpeedSync with logs enabled...."
+
+if [ "$logparm" != "logging" ]; then
+   printf "\nRunning CAKE-SpeedSync with logs disabled...."
+fi
 
 CS_PATH="/jffs/scripts/cake-speedsync"
 
@@ -102,10 +108,6 @@ iScheme="$cf_iSCH"
 
 log "\n$CS_PATH/cake.cfg"
 log "$(cat $CS_PATH/cake.cfg)"
-log "cf_eSCH=${cf_eSCH} cf_iSCH=${cf_iSCH}"
-log "qd_eSCH=${qd_eSCH} qd_iSCH=${qd_iSCH}"
-
-log "eScheme=${eScheme} iScheme=${iScheme}"
 
 #Enable CAKE with default settings for speedtest
 cs_default_eth0 "diffserv3"      #force to diffserv3 for speedtest
@@ -134,10 +136,10 @@ log "$qdisc"
 #Run Speedtest and generate result in json format
 json="$CS_PATH/spdtstresjson.json"
 > "$json"
-log "\nRunning speedtest..."
+log "\nRunning ookla speedtest to generate network load..."
 ((ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json > "$json") &)
 
-log "Capturing network throughput..."
+log "\nCapturing network throughput while speedtest runs in the background..."
 
 ctr=0
 max_wait_time=30
@@ -197,6 +199,12 @@ fi
 
 log "\nCalculating bandwidth...."
 
+#Get speedtest DL and UL speed for reference only (data not used)
+spdDL=$(echo "$spdtstresjson" | grep -oE '\],"bandwidth":[0-9]+' | grep -oE [0-9]+)
+spdUL=$(echo "$spdtstresjson" | grep -oE '"upload":\{"bandwidth":[0-9]+' | grep -oE [0-9]+)
+spdDL=$(cs_to_mbit "$spdDL")
+spdUL=$(cs_to_mbit "$spdUL")
+
 #Convert max tx rate from net/dev to Mbps
 maxDLMbps=$(cs_to_mbit "$maxeBps")
 maxULMbps=$(cs_to_mbit "$maxiBps")
@@ -237,16 +245,16 @@ cs_add_eth0 "$eScheme" "bandwidth ${ULSpeedMbps}mbit" "rtt ${ertt}ms" "$qd_eOVH"
 cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "rtt ${irtt}ms" "$qd_iOVH" "$qd_iMPU"
 
 #Logs
-log "\n"
+printf "\n\n"
 {
-log "       /proc/net/dev: --->   Download: %sMbps(Max) -> %sMbps(95%%)    Upload: %sMbps(Max) -> %sMbps(95%%)" "$maxDLMbps" "$DLSpeedMbps" "$maxULMbps" "$ULSpeedMbps"
-log "   SpeedTest Latency: --->   Latency: %sms" "$iping" 
-log "    Google Ping Test: --->   Median: %sms" "$epingmedian" 
-log ""
+printf "    Network Analysis: --->   Download: %sMbps(Max) -> %sMbps(95%%)    Upload: %sMbps(Max) -> %sMbps(95%%)" "$maxDLMbps" "$DLSpeedMbps" "$maxULMbps" "$ULSpeedMbps"
+printf "\n    SpeedTest Result: --->   Download: %sMbps    Upload: %sMbps    Latency: %sms" "$spdDL" "$spdUL" "$iping" 
+printf "\n    Google Ping Test: --->   Median: %sms" "$epingmedian" 
+printf "\n"
 } | tee -a "$CS_PATH/cake-ss.log"
-log "\n\nActive CAKE Settings:\n" 
+printf "\n\nUpdated CAKE Settings:\n" 
 tc qdisc | grep "eth0 root" | grep -oE 'dev.*' | sed 's/^/                      --->   /'
-log "\n\nCake-SpeedSync completed successfully!\n\n\n"
+printf "\n\nCake-SpeedSync completed successfully!\n\n\n"
 
 #Store logs for the last 7 runs only (tail -24)
 tail -24 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
