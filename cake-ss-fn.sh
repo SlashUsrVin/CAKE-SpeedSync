@@ -210,6 +210,6 @@ cs_status () {
    printf "\n\n      CAKE-SpeedSync: --->   Last Run: "
 
    cs_dyntclog=$(cat /jffs/scripts/cake-speedsync/cake-ss.log | tail -4)
-   printf "$cs_dyntclog"
+   echo "$cs_dyntclog"
    printf "\n\n"
 }
