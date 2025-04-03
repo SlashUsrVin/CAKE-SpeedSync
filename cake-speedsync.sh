@@ -26,6 +26,10 @@ function log () {
 
 log "\nRunning CAKE-SpeedSync with logs enabled...."
 
+if [ "$logparm" != "logging" ]; then
+   printf "\nRunning CAKE-SpeedSync with logs disabled...."
+fi
+
 CS_PATH="/jffs/scripts/cake-speedsync"
 
 #On reboot, wait a few seconds to make sure tc is already active
