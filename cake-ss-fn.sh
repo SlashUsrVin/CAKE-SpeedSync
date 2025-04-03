@@ -17,7 +17,7 @@
 
 cs_init () {
    #Run speedtest and apply cake settings
-   /jffs/scripts/cake-speedsync/cake-speedsync.sh
+   /jffs/scripts/cake-speedsync/cake-speedsync.sh "$1"
 
    #Delete cron job to avoid duplicate
    cru d cake-speedsync
@@ -27,33 +27,36 @@ cs_init () {
    cru a cake-speedsync "0 7-23/3,0-1 * * * /jffs/scripts/cake-speedsync/cake-speedsync.sh"   
 }
 
-cs_enable_default () {
-   cs_eScheme="$1"
-   cs_iScheme="$2"
-   cs_default_eth0 "$cs_eScheme"
-   cs_default_ifb4eth0 "$cs_iScheme"
-}
-
+#Enable CAKE for all outgoing (upload) traffic with default value. 
+#Temporarily set bandwidt to 100gbit to avoid throttling while speedtest runs. 
+#Speed and Latency will update after cake-speedsync runs.
 cs_default_eth0 () {
    cs_eScheme="$1"
    if [ -z "$cs_eScheme" ]; then
       cs_eScheme="diffserv3"
    fi
-   #Enable with default value. Speed and Latency will update once cake-speedsync runs
-   cs_disable_eth0
+   cs_disable_eth0 #Delete first then re-add
    tc qdisc add dev eth0 root cake bandwidth 100gbit ${cs_eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 50ms noatm overhead 54 mpu 64
 }
 
+#Enable CAKE for all incoming (download) traffic with default value. 
+#Temporarily set bandwidt to 100gbit to avoid throttling while speedtest runs. 
+#Speed and Latency will update after cake-speedsync runs.
 cs_default_ifb4eth0 () {
    cs_iScheme="$1"
    if [ -z "$cs_iScheme" ]; then
       cs_iScheme="diffserv3"
    fi
-   #Enable with default value. Speed and Latency will update once cake-speedsync runs
+   #Enable CAKE with default value. Temporarily set bandwidt to 100gbit to avoid throttling while speedtest runs. Speed and Latency will update after cake-speedsync runs.
    cs_disable_ifb4eth0
    tc qdisc add dev ifb4eth0 root cake bandwidth 100gbit  ${cs_iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso rtt 50ms noatm overhead 54 mpu 64
 }
 
+#This function is used to re-enable CAKE for outgoing traffic with updated settings for the following:
+#Prioritization Scheme (i.e diffserv3, diffserv4, besteffort, etc)
+#Bandwidth (speed) will be based from network throughput during speedtest but not from the actual speedtest result.
+#RTT for upload will be based from google ping test. 
+#MPU and Overhead will be retained. This can be changed from the WebUI or by running cs_upd_qdisc function below
 cs_add_eth0 () {
    cs_eScheme="$1"
    cs_Speed="$2"
@@ -64,6 +67,11 @@ cs_add_eth0 () {
    tc qdisc add dev eth0 root cake ${cs_Speed} ${cs_eScheme} dual-srchost nat nowash no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}
 }
 
+#This function is used to re-enable CAKE for outgoing traffic with updated settings for the following:
+#Prioritization Scheme (i.e diffserv3, diffserv4, besteffort, etc)
+#Bandwidth (speed) will be based from network throughput during speedtest but not from the actual speedtest result.
+#RTT for upload will be based from the latency of SpeedTest (ookla)
+#MPU and Overhead will be retained. This can be changed from the WebUI or by running cs_upd_qdisc function below
 cs_add_ifb4eth0 () {
    cs_iScheme="$1"
    cs_Speed="$2"
@@ -88,6 +96,8 @@ function cs_trim () {
     echo "$cs_trimmed"
 }
 
+#This function will check current total TX and RX in bytes
+#This is only useful when computing TX/RX speed 
 function cs_net_dev_get () {
    cs_intfc="$1"
    if [ "$cs_intfc" == "eth0" ]; then
@@ -98,6 +108,7 @@ function cs_net_dev_get () {
    echo "${cs_bytes:-0}"
 }
 
+#Show current TX/RX speed in Mbps for 30 seconds
 function cs_net_dev_show () {
    cs_ctr=0
    cs_maxwait=30
@@ -120,18 +131,25 @@ function cs_net_dev_show () {
    done
 }
 
+#Convert bytes to Mbps
+#bytes is the main unit of measure
 function cs_to_mbit () {
    cs_bytes="$1"
    cs_mbits=$(((cs_bytes * 8) / 1000000))
    echo "$cs_mbits"
 }
 
+#Update CAKE parameters. This can only update parameters that can be changed in place. (i.e bandwidth, mpu, overhead, rtt)
+#example: cs_upd_qdisc "eth0" "overhead 19"
+#example: cs_upd_qdisc "eth0" "rtt 10ms"
+#example: cs_upd_qdisc "eth0" "bandwidth 200mbit"
 cs_upd_qdisc () {
    cs_cake_intf="$1"
    cs_cake_parm="$2"
    tc qdisc change dev ${cs_cake_intf} root cake ${cs_cake_parm}
 }
 
+#Get current qdisc
 cs_get_qdisc () {
    cs_intfc=$1
    if [ -z "$cs_intfc" ]; then
@@ -156,143 +174,11 @@ cs_pad_text () {
    fi
 }
 
-cs_chk_ip () {
-   cs_pvalue=$1
-   cs_ip=$(echo "$cs_pvalue" | grep -oE '^192\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
-   if [ -z "$cs_ip" ]; then
-      echo 0
-   else
-      echo 1
-   fi
-}
-
-cs_chk_port () {
-   cs_pvalue=$1
-   set -- $(echo "$cs_pvalue" | awk -F: '{print $1,$2,$3}'); cs_p1="$1"; cs_p2="$2"; cs_p3="$3"
-
-   if [ -n "$cs_p3" ]; then
-      echo 0 #wrong port range format
-      return
-   fi
-
-   for cs_port in "$cs_p1" "$cs_p2"; do
-      cs_pchk=$(echo $cs_port | grep -oE '^[0-9]{1,5}$')
-      if [ -z "$cs_pchk" ]; then
-         echo 0 #wrong format
-         return
-      fi
-
-      if [ $cs_pchk -le 0 ] || [ $cs_pchk -ge 65536 ]; then
-         echo 0 #wrong port value
-         return
-      fi
-   done
-   
-   echo 1
-}
-
-cs_chk_proto () {
-   cs_pvalue=$1
-
-   case "$cs_pvalue" in 
-      tcp|TCP|udp|UDP) echo 1;;
-      *) echo 0;;
-   esac
-}
-
-cs_chk_prio () {
-   cs_pvalue=$1
-   
-   case "$cs_pvalue" in
-      1|2|3|4) echo 1 ;; 
-      *) echo 0 ;;  
-   esac      
-}
-
-cs_qos_udp () {
-   cs_proto="udp"
-   cs_port=$1
-   cs_prio=$2
-   cs_ip=$3
-
-   cs_pkt_qos $cs_ip $cs_port $cs_prio $cs_proto
-}
-
-cs_qos_tcp () {
-   cs_proto="tcp"
-   cs_port=$1
-   cs_prio=$2
-   cs_ip=$3
-
-   cs_pkt_qos $cs_ip $cs_port $cs_prio $cs_proto   
-}
-
-cs_qos_rfr () {
-   awk '{print $1, $2, $3, $4}' /jffs/scripts/cake-speedsync/qosports 2>/dev/null | while read -r cs_ip cs_port cs_tag cs_protocol; do
-   cs_pkt_qos $cs_ip $cs_port $cs_tag $cs_protocol; done 
-
-}
-
-cs_pkt_qos () {
-   cs_ip=$1
-   cs_port=$2
-
-   if [ -z "$3" ]; then
-      cs_dscptag="EF" #If $2 is blank set highest priority
-   else
-      case "$3" in
-         1) cs_dscptag="EF" ;;  #Highest
-         2) cs_dscptag="CS5" ;; #High
-         3) cs_dscptag="CS0" ;; #Normal
-         4) cs_dscptag="CS1" ;; #Low
-         *) cs_dscptag="EF" ;;  
-      esac
-   fi
-   
-   if [ -z "$4" ]; then
-      cs_proto="udp"
-   else
-      cs_proto="$4"
-   fi
-
-   cs_cmd="iptables -t mangle -%s %s -p $cs_proto -%s $cs_ip --%s $cs_port -j DSCP --set-dscp-class $cs_dscptag"
-   
-   #Remove first if existing then re-apply rule - prevent duplicate entries and cluttering iptables
-   for cs_mode in "D" "A"; do
-      for cs_chain in "FORWARD" "POSTROUTING"; do
-         case "$cs_chain" in
-            FORWARD) 
-               cs_pmatch="dport"
-               cs_imatch="d"
-               ;;
-            POSTROUTING)
-               cs_pmatch="sport"
-               cs_imatch="s"
-               ;;
-         esac
-
-         if [[ "$cs_mode" == "D" ]]; then
-            eval $(printf "$cs_cmd 2>/dev/null" "$cs_mode" "$cs_chain" "$cs_imatch" "$cs_pmatch")
-         else
-            eval $(printf "$cs_cmd" "$cs_mode" "$cs_chain" "$cs_imatch" "$cs_pmatch")
-         fi         
-      done
-   done
-
-   #Record ports for re-applying iptables on reboot
-   rm -f /jffs/scripts/cake-speedsync/qosports
-   iptables -t mangle -S | awk '/PREROUTING/ && /DSCP/ {print $4, $10, $NF, $6}' | while read -r cs_xip cs_xport cs_xhextag cs_xproto; do
-      case "$cs_xhextag" in
-         0x2e) cs_xtag="1";;
-         0x28) cs_xtag="2";;
-         0x00) cs_xtag="3";;
-         0x08) cs_xtag="4";;
-         *) cs_xtag="3";;
-      esac
-      echo "$cs_ip $cs_xport $cs_xtag $cs_xproto" >> /jffs/scripts/cake-speedsync/qosports; done
-   
-}
-
+#This function can be used to check the following with a single command (cs_status)
+#Check active iptables using DSCP tagging
+#Check if cronjob for recurring task for CAKE-SpeedSync
+#Check last run of CAKE-SpeedSync showing the network througput analysis, Speedtest and Google Ping test
+#Check if CAKE is active and current settings
 cs_status () {
    echo -e "\n[DSCP RULES]"
    echo  "    Active DSCP Rule:"
