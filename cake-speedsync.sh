@@ -142,7 +142,7 @@ log "\nRunning ookla speedtest to generate network load..."
 log "\nCapturing network throughput while speedtest runs in the background..."
 
 ctr=0
-max_wait_time=30
+max_wait_time=60 #max wait time before quitting
 maxeBps=0
 maxiBps=0
 
