@@ -63,7 +63,7 @@ backup_file "nat-start"
 
 #Move services-start
 mv -f $TGT_DIR/services-start $JFFS_DIR/services-start
-mv -f $TGT_DIR/services-start $JFFS_DIR/services-start
+mv -f $TGT_DIR/nat-start $JFFS_DIR/nat-start
 
 #Finalize installation
 #Source cake-ss-fn.sh
