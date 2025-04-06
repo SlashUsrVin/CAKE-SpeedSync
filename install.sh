@@ -28,7 +28,9 @@ function fetch_file() {
 
 function backup_file() {
     pscript_n="$1"
-    [ -f "$JFFS_DIR/$pscript_n" ] && mv -f "$JFFS_DIR/$pscript_n" "$TGT_DIR/$(date +"%Y%m%d%H%M%S")-$pscript_n"    
+    if [ -f "$JFFS_DIR/$pscript_n" ]; then
+        mv -f "$JFFS_DIR/$pscript_n" "$TGT_DIR/$(date +"%Y%m%d%H%M%S")-$pscript_n"    
+    fi
 }
 
 #Remove installation directory and all its contents including backup of services-start
