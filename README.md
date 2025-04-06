@@ -17,7 +17,7 @@ Adjusts CAKE QoS bandwidth and latency periodically based on network throughput 
 4. Enable SSH (LAN Only)  
 5. Open CMD or PowerShell and connect to your router via SSH (example: ssh admin@192.168.1.1)  
 6. Run syntax:            
-___curl -fsSL "https://raw.githubusercontent.com/mvin321/MERLIN-cake-speedsync/main/install.sh" | sh -s -- main___  
+___```curl -fsSL "https://raw.githubusercontent.com/mvin321/MERLIN-cake-speedsync/main/install.sh" | sh -s -- main```___  
 7. Once complete, reboot router manually.  
 
 ### __HOW IT WORKS:__  
