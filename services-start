@@ -1,7 +1,6 @@
 #!/bin/sh
 
 #CAKE-SpeedSync
-#Source cake-speedsync related functions
-. /jffs/scripts/cake-speedsync/cake-ss-fn.sh 
-#Perform cake-speedsync and re-add cron job
-cs_init 
+#Source cake-speedsync related functions, perform cake-speedsync and re-add cron job
+[ -f "/jffs/scripts/cake-speedsync/cake-ss-fn.sh" ] && . /jffs/scripts/cake-speedsync/cake-ss-fn.sh && cs_init
+ 
