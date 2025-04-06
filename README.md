@@ -19,6 +19,7 @@ Adjusts CAKE QoS bandwidth and latency periodically based on network throughput 
 6. Run syntax to install:            
 ```markdown
 curl -fsSL "https://raw.githubusercontent.com/mvin321/MERLIN-cake-speedsync/main/install.sh" | sh -s -- main
+```
 7. Script runs immediately after installation.  
 
 ### __HOW IT WORKS:__  
