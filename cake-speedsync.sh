@@ -14,6 +14,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+#log start time /tmp/syslog.log
+prog_name="CAKE-SpeedSync"
+logger "$prog_name started.."
+
+#Source cake-speedsync related functions
+CS_PATH="/jffs/scripts/cake-speedsync"
+. "$CS_PATH/cake-ss-fn.sh"
+
 logparm="$1"
 
 function log () {
@@ -29,8 +38,6 @@ log "\nRunning CAKE-SpeedSync with logs enabled...."
 if [ "$logparm" != "logging" ]; then
    printf "\nRunning CAKE-SpeedSync with logs disabled...."
 fi
-
-CS_PATH="/jffs/scripts/cake-speedsync"
 
 #On reboot, wait a few seconds to make sure tc is already active
 ctr=0
@@ -50,40 +57,33 @@ done
 
 #Log start date and time
 date >> "$CS_PATH/cake-ss.log"
-
-#Source cake-speedsync related functions
-. "$CS_PATH/cake-ss-fn.sh"
-   
+ 
 #Get current CAKE settings
 qdisc=$(tc qdisc show dev eth0 root | grep cake)
 log "\nCurrent CAKE settings:"
 log "$qdisc"
 if [ -n "$qdisc" ]; then
    #Retrieve current CAKE eth0 setting. 
-   cake_eth0=$(cs_get_qdisc "eth0")
-   set -- $(echo "$cake_eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
-   qd_eSPD="$1 $2"
-   qd_eSCH="$3"
-   qd_eRTT="$4 $5"
-   qd_eMPU="$6 $7"
-   qd_eOVH="$8 $9"
-   eqosenabled="1"
-else
+   qd_eSPD=$(cs_get_qdisc "eth0" "bandwidth")
+   qd_eSCH=$(cs_get_qdisc "eth0" "scheme")
+   qd_eRTT=$(cs_get_qdisc "eth0" "rtt")
+   qd_eMPU=$(cs_get_qdisc "eth0" "mpu")
+   qd_eOVH=$(cs_get_qdisc "eth0" "overhead")
    eqosenabled="0"
+else
+   eqosenabled="1"
 fi
 qdisc=$(tc qdisc show dev ifb4eth0 root | grep cake)
 log "$qdisc"
 if [ -n "$qdisc" ]; then
-   cake_ifb4eth0=$(cs_get_qdisc "ifb4eth0")
-   set -- $(echo "$cake_ifb4eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
-   qd_iSPD="$1 $2"
-   qd_iSCH="$3"
-   qd_iRTT="$4 $5"
-   qd_iMPU="$6 $7"
-   qd_iOVH="$8 $9"
-   iqosenabled="1"
-else
+   qd_iSPD=$(cs_get_qdisc "ifb4eth0" "bandwidth")
+   qd_iSCH=$(cs_get_qdisc "ifb4eth0" "scheme")
+   qd_iRTT=$(cs_get_qdisc "ifb4eth0" "rtt")
+   qd_iMPU=$(cs_get_qdisc "ifb4eth0" "mpu")
+   qd_iOVH=$(cs_get_qdisc "ifb4eth0" "overhead")
    iqosenabled="0"
+else
+   iqosenabled="1"
 fi
 
 #Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
@@ -114,17 +114,13 @@ cs_default_eth0 "diffserv3"      #force to diffserv3 for speedtest
 cs_default_ifb4eth0 "diffserv3"  #force to diffserv3 for speedtest
 
 #Use default MPU and Overhead if not yet set in the web UI
-if [ "$eqosenabled" -eq 0 ]; then
-   cake_eth0=$(cs_get_qdisc "eth0")
-   set -- $(echo "$cake_eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
-   qd_eMPU="$6 $7"
-   qd_eOVH="$8 $9"
+if [ "$eqosenabled" -ne 0 ]; then
+   qd_eMPU=$(cs_get_qdisc "eth0" "mpu")
+   qd_eOVH=$(cs_get_qdisc "eth0" "overhead")
 fi
-if [ "$iqosenabled" -eq 0 ]; then
-   cake_ifb4eth0=$(cs_get_qdisc "ifb4eth0")
-   set -- $(echo "$cake_ifb4eth0" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9}')
-   qd_iMPU="$6 $7"
-   qd_iOVH="$8 $9"
+if [ "$iqosenabled" -ne 0 ]; then
+   qd_iMPU=$(cs_get_qdisc "ifb4eth0" "mpu")
+   qd_iOVH=$(cs_get_qdisc "ifb4eth0" "overhead")
 fi
 
 log "\nUsing the following Queueing Discipline for ookla speedtest...."
@@ -188,19 +184,18 @@ spdtstresjson=$(cat "$json")
 if [ ! -s "$json" ]; then
    echo "Speed test failed!" >> cake-ss.log
    
-   #If enabled before speedtest, restore previous CAKE settings. Otherwise, delete qdisc for eth0
-   if [ "$eqosenabled" == "1" ]; then
+   #If enabled before speedtest, restore previous CAKE settings. Otherwise, set default cake for eth0
+   if [ "$eqosenabled" == "0" ]; then
       cs_add_eth0 "$qd_eSCH" "$qd_eSPD" "$qd_eRTT" "$qd_eOVH" "$qd_eMPU"
    else
-      cs_disable_eth0
+      cs_default_eth0
    fi
-   #If enabled before speedtest, restore previous CAKE settings. Otherwise, delete qdisc for ifb4eth0
-   if [ "$iqosenabled" == "1" ]; then
+   #If enabled before speedtest, restore previous CAKE settings. Otherwise, set default cake for ifb4eth0
+   if [ "$iqosenabled" == "0" ]; then
       cs_add_ifb4eth0 "$qd_iSCH" "$qd_iSPD" "$qd_iRTT" "$qd_iOVH" "$qd_iMPU"
    else
-      cs_disable_ifb4eth0
+      cs_default_ifb4eth0
    fi
-
    exit 1
 fi
 
@@ -254,6 +249,10 @@ fi
 cs_add_eth0 "$eScheme" "bandwidth ${ULSpeedMbps}mbit" "rtt ${ertt}ms" "$qd_eOVH" "$qd_eMPU"
 cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "rtt ${irtt}ms" "$qd_iOVH" "$qd_iMPU"
 
+#Save bandwidth and rtt so it can be retrieved by cs_apply_mpu_ovh function
+echo "eth0 bandwidth ${ULSpeedMbps}mbit rtt ${ertt}ms" > $CS_PATH/spd.curr
+echo "ifb4eth0 bandwidth ${DLSpeedMbps}mbit rtt ${irtt}ms" >> $CS_PATH/spd.curr
+
 #Logs
 printf "\n\n"
 {
@@ -268,3 +267,6 @@ printf "\n\nCake-SpeedSync completed successfully!\n\n\n"
 
 #Store logs for the last 7 runs only (tail -24)
 tail -24 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
+
+#Log end time /tmp/syslog.log
+logger "$prog_name ended.."
