@@ -16,9 +16,10 @@ Adjusts CAKE QoS bandwidth and latency periodically based on network throughput 
 3. Enable JFFS custom scripts and configs (Administration > System)  
 4. Enable SSH (LAN Only)  
 5. Open CMD or PowerShell and connect to your router via SSH (example: ssh admin@192.168.1.1)  
-6. Run syntax:            
-___```curl -fsSL "https://raw.githubusercontent.com/mvin321/MERLIN-cake-speedsync/main/install.sh" | sh -s -- main```___  
-7. Once complete, reboot router manually.  
+6. Run syntax to install:            
+```markdown
+curl -fsSL "https://raw.githubusercontent.com/mvin321/MERLIN-cake-speedsync/main/install.sh" | sh -s -- main  
+7. Script runs immediately after installation.  
 
 ### __HOW IT WORKS:__  
 1. When the script runs, CAKE bandwidth will be udpated to 100gbit to avoid throttling while the test is running.  
