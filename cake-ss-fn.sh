@@ -80,7 +80,7 @@ function cs_add_ifb4eth0 () {
    cs_Overhead="$4"
    cs_MPU="$5"
    cs_disable_ifb4eth0
-   tc qdisc add dev ifb4eth0 root cake ${cs_Speed} ${cs_iScheme} dual-dsthost nat wash ingress no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}
+   tc qdisc add dev ifb4eth0 root cake ${cs_Speed} ${cs_iScheme} dual-dsthost nat nowash ingress no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}
 }
 
 function cs_disable_eth0 () {
