@@ -1,3 +1,4 @@
 #!/bin/sh
 #Source cake-speedsync related functions and re-apply cake settings with new mpu and overhead value from web ui
+sleep 30
 [ -f "/jffs/scripts/cake-speedsync/cake-ss-fn.sh" ] && . /jffs/scripts/cake-speedsync/cake-ss-fn.sh && cs_apply_mpu_ovh
