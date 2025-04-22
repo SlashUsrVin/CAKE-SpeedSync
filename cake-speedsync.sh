@@ -110,8 +110,8 @@ log "\n$CS_PATH/cake.cfg"
 log "$(cat $CS_PATH/cake.cfg)"
 
 #Enable CAKE with default settings for speedtest
-cs_default_eth0 "diffserv3"      #force to diffserv3 for speedtest
-cs_default_ifb4eth0 "diffserv3"  #force to diffserv3 for speedtest
+cs_default_eth0 "diffserv4"      #force to diffserv4 for speedtest
+cs_default_ifb4eth0 "diffserv4"  #force to diffserv4 for speedtest
 
 #Use default MPU and Overhead if not yet set in the web UI
 if [ "$eqosenabled" -ne 0 ]; then
