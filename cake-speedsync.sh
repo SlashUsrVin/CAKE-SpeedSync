@@ -219,7 +219,7 @@ DLSpeedMbps=$(((r2DLMbps * 95) / 100))
 ULSpeedMbps=$(((r2ULMbps * 95) / 100))
 
 #RTT multiple - basis for both eth0 and ifb4eth0
-rttm=5 
+rttm=20 
 
 #Extract latency from json
 #The RTT value for ifb4eth0 is determined based on the speedtest latency 
