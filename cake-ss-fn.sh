@@ -336,6 +336,17 @@ function cs_pad_text () {
    fi
 }
 
+function cs_default_str () {
+   cs_chk_str="$1"
+   cs_def_val="$2"
+   
+   if [ -z "$cs_chk_str" ]; then
+      echo "$cs_def_val"
+   else
+      echo "$cs_chk_str"
+   fi
+}
+
 #This function can be used to check the following with a single command (cs_status)
 #Check active iptables using DSCP tagging
 #Check if cronjob for recurring task for CAKE-SpeedSync
