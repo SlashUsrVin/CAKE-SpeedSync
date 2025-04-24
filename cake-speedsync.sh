@@ -86,22 +86,28 @@ else
    iqosenabled="1"
 fi
 
-#Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
+#Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme and rtt in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
 if [ -f "$CS_PATH/cake.cfg" ]; then
    while read -r line; do
-      set -- $(echo "$line" | awk '{print $1, $2}'); intfc=$1; cfg=$2;
-
-      if [ "$intfc" == "eth0" ]; then
-         cf_eSCH="$cfg"
+      set -- $(echo "$line" | awk '{print $1, $2, $3, $4}')
+      cf_intfc="$1"
+      cf_sch="$2"
+      cf_rtt="$3 $4"
+      if [ "$cf_intfc" == "eth0" ]; then
+         cf_eSCH="$cf_sch"
+         ertt="$cf_rtt"
       fi
 
-      if [ "$intfc" == "ifb4eth0" ]; then
-         cf_iSCH="$cfg"
+      if [ "$cf_intfc" == "ifb4eth0" ]; then
+         cf_iSCH="$cf_sch"
+         irtt="$cf_rtt"
       fi; done < "$CS_PATH/cake.cfg"
-else
-   cf_eSCH="diffserv3" #default cake merlin setting
-   cf_iSCH="besteffort" #default cake merlin setting
 fi
+
+cf_eSCH=$(cs_default_str "$cf_eSCH" "diffserv3")
+cf_iSCH=$(cs_default_str "$cf_iSCH" "besteffort")
+ertt=$(cs_default_str "$ertt" "rtt 50ms")
+irtt=$(cs_default_str "$irtt" "rtt 50ms")
 
 eScheme="$cf_eSCH"
 iScheme="$cf_iSCH"
@@ -218,36 +224,12 @@ r2ULMbps=$(cs_to_mbit "$rank2eBps")
 DLSpeedMbps=$(((r2DLMbps * 95) / 100))
 ULSpeedMbps=$(((r2ULMbps * 95) / 100))
 
-#RTT multiple - basis for both eth0 and ifb4eth0
-rttm=20 
-
-#Extract latency from json
-#The RTT value for ifb4eth0 is determined based on the speedtest latency 
+#Extract latency from json (for logging purposes only)
 iping=$(echo "$spdtstresjson" | grep -oE '"latency":\s?[0-9]+(\.[0-9]*)?' | grep -oE '[0-9]+(\.[0-9]*)?')
-ipingwhole=$(echo "$iping" | sed -E 's/\.[0-9]+//')
-
-log "\nGoogle ping test in progress...."
-#The RTT value for eth0 is determined based on the ping response from Google. 
-eping=$(ping -c 10 8.8.8.8 | grep -oE 'time\=[0-9]+(.[0-9]*)?\sms' | grep -oE '[0-9]+(.[0-9]*)?')
-epingmedian=$(echo "$eping" | awk 'NR==6')
-epingwhole=$(echo "$epingmedian" | sed -E 's/\.[0-9]+//')
-
-log "\nCalculating rtt...."
-#The selected RTT for eth0 and ifb4eth0 will be rounded to the nearest multiple of (rttm value) for consistency.
-ertt=$(( (epingwhole + rttm - 1) / rttm * rttm )) #eth0
-irtt=$(( (ipingwhole + rttm - 1) / rttm * rttm )) #ifb4eth0
-
-if [ $ertt -ge 95 ]; then
-   ertt=100 #default cake rtt
-fi
-
-if [ $irtt -ge 95 ]; then
-   irtt=100 #default cake rtt
-fi
 
 #Re-enable CAKE with updated settings
-cs_add_eth0 "$eScheme" "bandwidth ${ULSpeedMbps}mbit" "rtt ${ertt}ms" "$qd_eOVH" "$qd_eMPU"
-cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "rtt ${irtt}ms" "$qd_iOVH" "$qd_iMPU"
+cs_add_eth0 "$eScheme" "bandwidth ${ULSpeedMbps}mbit" "$ertt" "$qd_eOVH" "$qd_eMPU"
+cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "$irtt" "$qd_iOVH" "$qd_iMPU"
 
 #Save bandwidth and rtt so it can be retrieved by cs_apply_mpu_ovh function
 echo "eth0 bandwidth ${ULSpeedMbps}mbit rtt ${ertt}ms" > $CS_PATH/spd.curr
@@ -258,7 +240,6 @@ printf "\n\n"
 {
 printf "    Network Analysis: --->   Download: %sMbps(Max) %sMbps(rank 2) -> %sMbps(95%%)    Upload: %sMbps(Max) %sMbps(rank 2) -> %sMbps(95%%)" "$maxDLMbps" "$r2DLMbps" "$DLSpeedMbps" "$maxULMbps" "$r2ULMbps" "$ULSpeedMbps"
 printf "\n    SpeedTest Result: --->   Download: %sMbps    Upload: %sMbps    Latency: %sms" "$spdDL" "$spdUL" "$iping" 
-printf "\n    Google Ping Test: --->   Median: %sms" "$epingmedian" 
 printf "\n"
 } | tee -a "$CS_PATH/cake-ss.log"
 printf "\n\nUpdated CAKE Settings:\n" 
