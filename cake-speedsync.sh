@@ -26,7 +26,8 @@ CS_PATH="/jffs/scripts/cake-speedsync"
 logparm="$1"
 
 function log () {
-   msg="$1" #Assign 1st ($1) argument to msg"
+   #replace % with %% except if % is followed by s (%s) which is a string argument for printf
+   msg=$(echo "$1" | sed -e 's/%s/__KEEP_THIS__/g' -e 's/%/%%/g' -e 's/__KEEP_THIS__/%s/g')
    if [ "$logparm" == "logging" ]; then
       shift    #Remove msg (=$1) as 1st argument since msg can also contain multiple arguments (%s). This will avoid the whole string (msg) to be assigned to itself.
       printf -- "$msg\n" "$@"
@@ -89,25 +90,34 @@ fi
 #Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme and rtt in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
 if [ -f "$CS_PATH/cake.cfg" ]; then
    while read -r line; do
-      set -- $(echo "$line" | awk '{print $1, $2, $3, $4}')
-      cf_intfc="$1"
-      cf_sch="$2"
-      cf_rtt="$3 $4"
+      #set -- $(echo "$line" | awk '{print $1, $2, $3, $4}')
+      #cf_intfc="$1"
+      #cf_sch="$2"
+      #cf_rtt="$3 $4"
+      cf_intfc=$(echo "$line" | awk '{print $1}')
+      cf_sch=$(echo "$line" | grep -oE "(besteffort|diffserv[3-4])")
+      cf_rtt=$(echo "$line" | grep -oE "rtt [0-9]+ms")
+      cf_bwp=$(echo "$line" | grep -oE "bandwidth ([8-9][0-9]|100)%" | grep -oE "[0-9]+") #minimum allowable is 80% and max is 100%
       if [ "$cf_intfc" == "eth0" ]; then
          cf_eSCH="$cf_sch"
          ertt="$cf_rtt"
+         ebw_alloc="$cf_bwp"
       fi
 
       if [ "$cf_intfc" == "ifb4eth0" ]; then
          cf_iSCH="$cf_sch"
          irtt="$cf_rtt"
+         ibw_alloc="$cf_bwp"
       fi; done < "$CS_PATH/cake.cfg"
 fi
 
+#Set default value for Scheme, RTT and bandwidth allocation if not set in the configuration file (cake.cfg)
 cf_eSCH=$(cs_default_str "$cf_eSCH" "diffserv3")
 cf_iSCH=$(cs_default_str "$cf_iSCH" "besteffort")
 ertt=$(cs_default_str "$ertt" "rtt 50ms")
 irtt=$(cs_default_str "$irtt" "rtt 50ms")
+ebw_alloc=$(cs_default_str "$ebw_alloc" "95")
+ibw_alloc=$(cs_default_str "$ibw_alloc" "95")
 
 eScheme="$cf_eSCH"
 iScheme="$cf_iSCH"
@@ -220,9 +230,9 @@ maxULMbps=$(cs_to_mbit "$maxeBps")
 r2DLMbps=$(cs_to_mbit "$rank2iBps")
 r2ULMbps=$(cs_to_mbit "$rank2eBps")
 
-#Set 95% of identified max speed for CAKE QoS
-DLSpeedMbps=$(((r2DLMbps * 95) / 100))
-ULSpeedMbps=$(((r2ULMbps * 95) / 100))
+#Set bandwidth for CAKE
+DLSpeedMbps=$(((r2DLMbps * ibw_alloc) / 100))
+ULSpeedMbps=$(((r2ULMbps * ebw_alloc) / 100))
 
 #Extract latency from json (for logging purposes only)
 iping=$(echo "$spdtstresjson" | grep -oE '"latency":\s?[0-9]+(\.[0-9]*)?' | grep -oE '[0-9]+(\.[0-9]*)?')
@@ -238,7 +248,7 @@ echo "ifb4eth0 bandwidth ${DLSpeedMbps}mbit rtt ${irtt}ms" >> $CS_PATH/spd.curr
 #Logs
 printf "\n\n"
 {
-printf "    Network Analysis: --->   Download: %sMbps(Max) %sMbps(rank 2) -> %sMbps(95%%)    Upload: %sMbps(Max) %sMbps(rank 2) -> %sMbps(95%%)" "$maxDLMbps" "$r2DLMbps" "$DLSpeedMbps" "$maxULMbps" "$r2ULMbps" "$ULSpeedMbps"
+printf "    Network Analysis: --->   Download: %sMbps(Max) %sMbps(rank 2) -> %sMbps(%s%%)    Upload: %sMbps(Max) %sMbps(rank 2) -> %sMbps(%s%%)" "$maxDLMbps" "$r2DLMbps" "$DLSpeedMbps" "$ibw_alloc" "$maxULMbps" "$r2ULMbps" "$ULSpeedMbps" "$ebw_alloc"
 printf "\n    SpeedTest Result: --->   Download: %sMbps    Upload: %sMbps    Latency: %sms" "$spdDL" "$spdUL" "$iping" 
 printf "\n"
 } | tee -a "$CS_PATH/cake-ss.log"
