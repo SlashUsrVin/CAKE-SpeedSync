@@ -369,8 +369,10 @@ function cs_status () {
    printf  "\n   Active Cron Entry:\n"
 
    cs_cronj=$(crontab -l | grep cake-speedsync.sh)
-
    cs_pad_text "$cs_cronj" "WARNING: Crontab entry is missing. Run /jffs/scripts/services-start and check again"
+
+   cs_cronj=$(crontab -l | grep -vE "cake-speedsync.sh")
+   cs_pad_text "$cs_cronj" ""
 
    printf "\n\n[CAKE SETTINGS]"
    printf  "\n Active CAKE Setting:\n"
