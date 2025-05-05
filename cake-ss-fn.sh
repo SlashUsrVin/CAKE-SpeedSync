@@ -353,14 +353,19 @@ function cs_default_str () {
 #Check last run of CAKE-SpeedSync showing the network througput analysis, Speedtest and Google Ping test
 #Check if CAKE is active and current settings
 function cs_status () {
-   echo -e "\n[DSCP RULES]"
-   echo  "    Active DSCP Rule:"
+   printf "\n[DSCP RULES]"
+   printf  "\n    Active DSCP Rule:\n"
 
-   cs_ipt="$(iptables -t mangle -L --line-numbers | grep -E "Chain|DSCP")"
+   for chain in PREROUTING INPUT FORWARD OUTPUT POSTROUTING; do
+      cs_ipt="$(iptables-save -t mangle | grep -E 'DSCP' | grep -E "${chain}" | awk '{print NR, $0}')"
+      if [ ! -z "$cs_ipt" ]; then
+         cs_pad_text "${chain}" ""
+         cs_pad_text "$cs_ipt" ""
+         printf "\n"
+      fi
+   done
 
-   cs_pad_text "$cs_ipt" ""
-
-   printf "\n\n[CRON JOB - SCHEDULE - Make sure cake is re-adjusted every n hours]"
+   printf "\n[CRON JOB - SCHEDULE - Make sure cake is re-adjusted every n hours]"
    printf  "\n   Active Cron Entry:\n"
 
    cs_cronj=$(crontab -l | grep cake-speedsync.sh)
@@ -372,17 +377,17 @@ function cs_status () {
 
    cs_allqdisc=$(tc qdisc | grep "eth0 root")
 
-   cs_pad_text "" "$cs_allqdisc" 
-   
+   cs_pad_text "" "$cs_allqdisc"
+
    cs_cakeqdisc=$(tc qdisc | grep cake)
 
    if [ -z "$cs_cakeqdisc" ]; then
-      cs_pad_text "" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh" 
+      cs_pad_text "" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh"
    fi
-   
+
    printf "\n\n      CAKE-SpeedSync: --->   Last Run: "
 
-   cs_dyntclog=$(cat $CS_PATH/cake-ss.log | tail -4)
+   cs_dyntclog=$(cat $CS_PATH/cake-ss.log | tail -3)
    echo "$cs_dyntclog"
    printf "\n\n"
 }
