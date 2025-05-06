@@ -15,13 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#log start time /tmp/syslog.log
-prog_name="CAKE-SpeedSync"
-logger "$prog_name started.."
+#SCRIPT-ALIAS:CAKE-SpeedSync
 
 #Source cake-speedsync related functions
 CS_PATH="/jffs/scripts/cake-speedsync"
-. "$CS_PATH/cake-ss-fn.sh"
+source "$CS_PATH/cake-ss-fn.sh"
 
 logparm="$1"
 
@@ -258,6 +256,3 @@ printf "\n\nCake-SpeedSync completed successfully!\n\n\n"
 
 #Store logs for the last 7 runs only (tail -24)
 tail -24 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
-
-#Log end time /tmp/syslog.log
-logger "$prog_name ended.."
