@@ -240,8 +240,8 @@ cs_add_eth0 "$eScheme" "bandwidth ${ULSpeedMbps}mbit" "$ertt" "$qd_eOVH" "$qd_eM
 cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "$irtt" "$qd_iOVH" "$qd_iMPU"
 
 #Save bandwidth and rtt so it can be retrieved by cs_apply_mpu_ovh function
-echo "eth0 bandwidth ${ULSpeedMbps}mbit rtt ${ertt}ms" > $CS_PATH/spd.curr
-echo "ifb4eth0 bandwidth ${DLSpeedMbps}mbit rtt ${irtt}ms" >> $CS_PATH/spd.curr
+echo "eth0 bandwidth ${ULSpeedMbps}mbit ${ertt}" > $CS_PATH/spd.curr
+echo "ifb4eth0 bandwidth ${DLSpeedMbps}mbit ${irtt}" >> $CS_PATH/spd.curr
 
 #Logs
 printf "\n\n"
