@@ -88,24 +88,23 @@ fi
 #Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme and rtt in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
 if [ -f "$CS_PATH/cake.cfg" ]; then
    while read -r line; do
-      #set -- $(echo "$line" | awk '{print $1, $2, $3, $4}')
-      #cf_intfc="$1"
-      #cf_sch="$2"
-      #cf_rtt="$3 $4"
       cf_intfc=$(echo "$line" | awk '{print $1}')
       cf_sch=$(echo "$line" | grep -oE "(besteffort|diffserv[3-4])")
       cf_rtt=$(echo "$line" | grep -oE "rtt [0-9]+ms")
       cf_bwp=$(echo "$line" | grep -oE "bandwidth ([8-9][0-9]|100)%" | grep -oE "[0-9]+") #minimum allowable is 80% and max is 100%
+      cf_mem=$(echo "$line" | grep -oE "memlimit [0-9]+MB")
       if [ "$cf_intfc" == "eth0" ]; then
          cf_eSCH="$cf_sch"
          ertt="$cf_rtt"
          ebw_alloc="$cf_bwp"
+         emem="$cf_mem"
       fi
 
       if [ "$cf_intfc" == "ifb4eth0" ]; then
          cf_iSCH="$cf_sch"
          irtt="$cf_rtt"
          ibw_alloc="$cf_bwp"
+         imem="$cf_mem"
       fi; done < "$CS_PATH/cake.cfg"
 fi
 
@@ -235,13 +234,17 @@ ULSpeedMbps=$(((r2ULMbps * ebw_alloc) / 100))
 #Extract latency from json (for logging purposes only)
 iping=$(echo "$spdtstresjson" | grep -oE '"latency":\s?[0-9]+(\.[0-9]*)?' | grep -oE '[0-9]+(\.[0-9]*)?')
 
+#Append additional cake settings
+e_oth="$emem"
+i_oth="$imem"
+
 #Re-enable CAKE with updated settings
-cs_add_eth0 "$eScheme" "bandwidth ${ULSpeedMbps}mbit" "$ertt" "$qd_eOVH" "$qd_eMPU"
-cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "$irtt" "$qd_iOVH" "$qd_iMPU"
+cs_add_eth0 "$eScheme" "bandwidth ${ULSpeedMbps}mbit" "$ertt" "$qd_eOVH" "$qd_eMPU" "$e_oth"
+cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "$irtt" "$qd_iOVH" "$qd_iMPU" "$i_oth"
 
 #Save bandwidth and rtt so it can be retrieved by cs_apply_mpu_ovh function
-echo "eth0 bandwidth ${ULSpeedMbps}mbit ${ertt}" > $CS_PATH/spd.curr
-echo "ifb4eth0 bandwidth ${DLSpeedMbps}mbit ${irtt}" >> $CS_PATH/spd.curr
+echo "eth0 ${eScheme} bandwidth ${ULSpeedMbps}mbit ${ertt} ${e_oth}" > $CS_PATH/spd.curr
+echo "ifb4eth0 ${iScheme} bandwidth ${DLSpeedMbps}mbit ${irtt} ${i_oth}" >> $CS_PATH/spd.curr
 
 #Logs
 printf "\n\n"

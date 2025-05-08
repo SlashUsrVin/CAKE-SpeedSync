@@ -64,8 +64,13 @@ function cs_add_eth0 () {
    cs_RTT="$3"
    cs_Overhead="$4"
    cs_MPU="$5"
+   
+   if [ ! -z "$6" ]; then
+      cs_AddSett=" $6"
+   fi
+
    cs_disable_eth0
-   tc qdisc add dev eth0 root cake ${cs_Speed} ${cs_eScheme} dual-srchost nat nowash no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}
+   tc qdisc add dev eth0 root cake ${cs_Speed} ${cs_eScheme} dual-srchost nat nowash no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}${cs_AddSett}
 }
 
 #This function is used to re-enable CAKE for outgoing traffic with updated settings for the following:
@@ -79,8 +84,13 @@ function cs_add_ifb4eth0 () {
    cs_RTT="$3"
    cs_Overhead="$4"
    cs_MPU="$5"
+
+   if [ ! -z "$6" ]; then
+      cs_AddSett=" $6"
+   fi   
+
    cs_disable_ifb4eth0
-   tc qdisc add dev ifb4eth0 root cake ${cs_Speed} ${cs_iScheme} dual-dsthost nat nowash ingress no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}
+   tc qdisc add dev ifb4eth0 root cake ${cs_Speed} ${cs_iScheme} dual-dsthost nat nowash ingress no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}${cs_AddSett}
 }
 
 function cs_disable_eth0 () {
@@ -197,18 +207,19 @@ function cs_get_qdisc () {
 
 #Re-apply settings - This will be called every time nat restarts to apply the new mpu and overhead only
 function cs_apply_mpu_ovh () {
-   logger "Re-applying CAKE with new mpu and overhead from web ui"
-   #Get Scheme, bandwidth and rtt before mpu and overhead were changed in router's web ui
-   cs_cf_eScheme=$(cat $CS_PATH/cake.cfg | grep -oE "^eth0.*" | awk '{print $2}')
-   cs_cf_iScheme=$(cat $CS_PATH/cake.cfg | grep -oE "^ifb4eth0.*" | awk '{print $2}')
+   logger "Nat Restarted. Re-applying CAKE with new mpu and overhead from web ui"
    
-   set -- $(cat $CS_PATH/spd.curr | grep -oE "^eth0.*" | awk '{print $1, $2, $3, $4, $5}');
-   cs_cr_eSpd="$2 $3"
-   cs_cr_eRtt="$4 $5"
+   set -- $(cat $CS_PATH/spd.curr | grep -oE "^eth0.*" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}');
+   cs_cf_eScheme="$2"
+   cs_cr_eSpd="$3 $4"
+   cs_cr_eRtt="$5 $6"
+   cs_cr_eMem="$7 $8"
    
-   set -- $(cat $CS_PATH/spd.curr | grep -oE "^ifb4eth0.*" | awk '{print $1, $2, $3, $4, $5}')
-   cs_cr_iSpd="$2 $3"
-   cs_cr_iRtt="$4 $5"
+   set -- $(cat $CS_PATH/spd.curr | grep -oE "^ifb4eth0.*" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}')
+   cs_cf_iScheme="$2"
+   cs_cr_iSpd="$3 $4"
+   cs_cr_iRtt="$5 $6"
+   cs_cr_iMem="$7 $8"
 
    #Get new mpu and overhead
    cs_q_empu=$(cs_get_qdisc "eth0" "mpu")
@@ -265,8 +276,8 @@ function cs_apply_mpu_ovh () {
    fi
 
    #Re-apply settings
-   cs_add_eth0 "$cs_cf_eScheme" "$cs_cr_eSpd" "$cs_cr_eRtt" "$cs_q_eovh" "$cs_q_empu"
-   cs_add_ifb4eth0 "$cs_cf_iScheme" "$cs_cr_iSpd" "$cs_cr_iRtt" "$cs_q_iovh" "$cs_q_impu"
+   cs_add_eth0 "$cs_cf_eScheme" "$cs_cr_eSpd" "$cs_cr_eRtt" "$cs_q_eovh" "$cs_q_empu" "$cs_cr_eMem"
+   cs_add_ifb4eth0 "$cs_cf_iScheme" "$cs_cr_iSpd" "$cs_cr_iRtt" "$cs_q_iovh" "$cs_q_impu" "$cs_cr_iMem"
 }
 
 #Validates tc qdisc parameter
