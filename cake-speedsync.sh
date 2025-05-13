@@ -87,7 +87,7 @@ fi
 
 #Check if /jffs/scripts/cake-speedsync/cake.cfg exists. If so, use the scheme and rtt in the cfg file (i.e diffserv4, diffserv3, besteffort, etc)
 if [ -f "$CS_PATH/cake.cfg" ]; then
-   while read -r line; do
+   while read -r line || [ -n "$line" ]; do
       cf_intfc=$(echo "$line" | awk '{print $1}')
       cf_sch=$(echo "$line" | grep -oE "(besteffort|diffserv[3-4])")
       cf_rtt=$(echo "$line" | grep -oE "rtt [0-9]+ms")
