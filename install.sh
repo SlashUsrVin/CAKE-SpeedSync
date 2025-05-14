@@ -34,11 +34,13 @@ function backup_file() {
     bk_pre_name=$(date +"%Y%m%d%H%M%S")
     if [ -f "$sh_full_path" ]; then
         mv -f "$sh_full_path" "$TMP_DIR/$bk_pre_name-$pscript_n"    
+        echo "$pscript_n" >> "$TMP_DIR/backup.list"
     fi
 }
 
 #Create backup
 mkdir -p "$TMP_DIR"
+> "$TMP_DIR/backup.list"
 backup_file "$JFFS_DIR/services-start"
 backup_file "$JFFS_DIR/nat-start"
 backup_file "$TGT_DIR/cake.cfg"
@@ -82,5 +84,7 @@ echo -e "\nInstallation Complete!"
 #Run CAKE-SpeedSync and add cron job using cru
 cs_init "logging"
 
-#Copy backup to cake-speedsync directory. Temp backup is retained. This will be deleted automatically when router reboots.
-cp -r "$TMP_DIR" "$TGT_DIR/"
+#Copy backup to cake-speedsync directory. Temp backup is retained and will be deleted automatically when router reboots.
+while read -r line || [ -n "$line" ]; do 
+    cp $(ls -r "$TMP_DIR"/*"$line" | sort | tail -1) "$TGT_DIR/"
+done < "$TMP_DIR/backup.list"
