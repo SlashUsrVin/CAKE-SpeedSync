@@ -38,7 +38,6 @@ function backup_file() {
 }
 
 #Create backup
-rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 backup_file "$JFFS_DIR/services-start"
 backup_file "$JFFS_DIR/nat-start"
@@ -83,5 +82,5 @@ echo -e "\nInstallation Complete!"
 #Run CAKE-SpeedSync and add cron job using cru
 cs_init "logging"
 
-#move backup to cake-speedsync directory
-mv "$TMP_DIR" "$TGT_DIR"
+#Copy backup to cake-speedsync directory. Temp backup is retained. This will be deleted automatically when router reboots.
+cp "$TMP_DIR" "$TGT_DIR"
