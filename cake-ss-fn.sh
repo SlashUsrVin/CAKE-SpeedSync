@@ -50,7 +50,7 @@ function cs_default_ifb4eth0 () {
    fi
    #Enable CAKE with default value. Temporarily set bandwidt to 100gbit to avoid throttling while speedtest runs. Speed and Latency will update after cake-speedsync runs.
    cs_disable_ifb4eth0
-   tc qdisc add dev ifb4eth0 root cake bandwidth 100gbit  ${cs_iScheme} dual-dsthost nat nowash ingress ack-filter-aggressive split-gso rtt 100ms noatm overhead 22 mpu 84
+   tc qdisc add dev ifb4eth0 root cake bandwidth 100gbit  ${cs_iScheme} dual-dsthost nat nowash ingress no-ack-filter split-gso rtt 100ms noatm overhead 22 mpu 84
 }
 
 #This function is used to re-enable CAKE for outgoing traffic with updated settings for the following:
@@ -90,7 +90,7 @@ function cs_add_ifb4eth0 () {
    fi   
 
    cs_disable_ifb4eth0
-   tc qdisc add dev ifb4eth0 root cake ${cs_Speed} ${cs_iScheme} dual-dsthost nat nowash ingress ack-filter-aggressive split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}${cs_AddSett}
+   tc qdisc add dev ifb4eth0 root cake ${cs_Speed} ${cs_iScheme} dual-dsthost nat nowash ingress no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}${cs_AddSett}
 }
 
 function cs_disable_eth0 () {
