@@ -83,4 +83,4 @@ echo -e "\nInstallation Complete!"
 cs_init "logging"
 
 #Copy backup to cake-speedsync directory. Temp backup is retained. This will be deleted automatically when router reboots.
-cp "$TMP_DIR" "$TGT_DIR"
+cp -r "$TMP_DIR" "$TGT_DIR/"
