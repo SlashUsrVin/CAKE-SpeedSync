@@ -50,6 +50,7 @@ rm -rf "$TGT_DIR"
 
 #Re-create directory
 mkdir -p "$TGT_DIR" 
+mkdir -p "$TGT_DIR/backup" 
 
 #Fetch scripts from github
 fetch_file "cake-speedsync.sh"
@@ -86,5 +87,5 @@ cs_init "logging"
 
 #Copy backup to cake-speedsync directory. Temp backup is retained and will be deleted automatically when router reboots.
 while read -r line || [ -n "$line" ]; do 
-    cp $(ls -r "$TMP_DIR"/*"$line" | sort | tail -1) "$TGT_DIR/"
+    cp $(ls -r "$TMP_DIR"/*"$line" | sort | tail -1) "$TGT_DIR/backup"
 done < "$TMP_DIR/backup.list"
