@@ -15,10 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-GIT_REPO="mvin321/MERLIN-cake-speedsync"
+GIT_REPO="mvin321/CAKE-SpeedSync"
 BRANCH="$1"
 JFFS_DIR="/jffs/scripts"
 TGT_DIR="/jffs/scripts/cake-speedsync"
+BKU_DIR="$TGT_DIR/backup"
+TMP_DIR="/tmp/home/root/backup"
 
 #Function to fetch scripts from github
 function fetch_file() {
@@ -27,11 +29,20 @@ function fetch_file() {
 }
 
 function backup_file() {
-    pscript_n="$1"
-    if [ -f "$JFFS_DIR/$pscript_n" ]; then
-        mv -f "$JFFS_DIR/$pscript_n" "$TGT_DIR/$(date +"%Y%m%d%H%M%S")-$pscript_n"    
+    sh_full_path="$1"
+    pscript_n=$(basename "$sh_full_path")
+    bk_pre_name=$(date +"%Y%m%d%H%M%S")
+    if [ -f "$sh_full_path" ]; then
+        mv -f "$sh_full_path" "$TMP_DIR/$bk_pre_name-$pscript_n"    
     fi
 }
+
+#Create backup
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR"
+backup_file "$JFFS_DIR/services-start"
+backup_file "$JFFS_DIR/nat-start"
+backup_file "$TGT_DIR/cake.cfg"
 
 #Remove installation directory and all its contents including backup of services-start
 rm -rf "$TGT_DIR"
@@ -59,10 +70,6 @@ dos2unix $TGT_DIR/cake-ss-fn.sh
 dos2unix $TGT_DIR/services-start
 dos2unix $TGT_DIR/nat-start
 
-#Create back up of the original services-start if existing
-backup_file "services-start"
-backup_file "nat-start"
-
 #Move services-start
 mv -f $TGT_DIR/services-start $JFFS_DIR/services-start
 mv -f $TGT_DIR/nat-start $JFFS_DIR/nat-start
@@ -75,3 +82,6 @@ echo -e "\nInstallation Complete!"
 
 #Run CAKE-SpeedSync and add cron job using cru
 cs_init "logging"
+
+#move backup to cake-speedsync directory
+mv "$TMP_DIR" "$TGT_DIR"
