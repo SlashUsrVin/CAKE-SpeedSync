@@ -16,7 +16,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 export CS_PATH="/jffs/scripts/cake-speedsync"
 
-function cs_init () {
+cs_init () {
    #Run speedtest and apply cake settings
    $CS_PATH/cake-speedsync.sh "$1"
 
@@ -31,7 +31,7 @@ function cs_init () {
 #Enable CAKE for all outgoing (upload) traffic with default value. 
 #Temporarily set bandwidt to 100gbit to avoid throttling while speedtest runs. 
 #Speed and Latency will update after cake-speedsync runs.
-function cs_default_eth0 () {
+cs_default_eth0 () {
    cs_eScheme="$1"
    if [ -z "$cs_eScheme" ]; then
       cs_eScheme="diffserv3"
@@ -43,7 +43,7 @@ function cs_default_eth0 () {
 #Enable CAKE for all incoming (download) traffic with default value. 
 #Temporarily set bandwidt to 100gbit to avoid throttling while speedtest runs. 
 #Speed and Latency will update after cake-speedsync runs.
-function cs_default_ifb4eth0 () {
+cs_default_ifb4eth0 () {
    cs_iScheme="$1"
    if [ -z "$cs_iScheme" ]; then
       cs_iScheme="diffserv3"
@@ -58,14 +58,14 @@ function cs_default_ifb4eth0 () {
 #Bandwidth (speed) will be based from network throughput during speedtest but not from the actual speedtest result.
 #RTT for upload will be based from google ping test. 
 #MPU and Overhead will be retained. This can be changed from the WebUI or by running cs_upd_qdisc function below
-function cs_add_eth0 () {
+cs_add_eth0 () {
    cs_eScheme="$1"
    cs_Speed="$2"
    cs_RTT="$3"
    cs_Overhead="$4"
    cs_MPU="$5"
    
-   if [ ! -z "$6" ]; then
+   if [ -n "$6" ]; then
       cs_AddSett=" $6"
    fi
 
@@ -78,14 +78,14 @@ function cs_add_eth0 () {
 #Bandwidth (speed) will be based from network throughput during speedtest but not from the actual speedtest result.
 #RTT for upload will be based from the latency of SpeedTest (ookla)
 #MPU and Overhead will be retained. This can be changed from the WebUI or by running cs_upd_qdisc function below
-function cs_add_ifb4eth0 () {
+cs_add_ifb4eth0 () {
    cs_iScheme="$1"
    cs_Speed="$2"
    cs_RTT="$3"
    cs_Overhead="$4"
    cs_MPU="$5"
 
-   if [ ! -z "$6" ]; then
+   if [ -n "$6" ]; then
       cs_AddSett=" $6"
    fi   
 
@@ -93,15 +93,15 @@ function cs_add_ifb4eth0 () {
    tc qdisc add dev ifb4eth0 root cake ${cs_Speed} ${cs_iScheme} dual-dsthost nat nowash ingress no-ack-filter split-gso ${cs_RTT} noatm ${cs_Overhead} ${cs_MPU}${cs_AddSett}
 }
 
-function cs_disable_eth0 () {
+cs_disable_eth0 () {
    tc qdisc del dev eth0 root 2>/dev/null
 }
 
-function cs_disable_ifb4eth0 () {
+cs_disable_ifb4eth0 () {
    tc qdisc del dev ifb4eth0 root 2>/dev/null
 }
 
-function cs_trim () {
+cs_trim () {
     cs_str="$1"
     cs_trimmed=$(echo "$cs_str" | awk '{$0=$0;print}')
     echo "$cs_trimmed"
@@ -109,9 +109,9 @@ function cs_trim () {
 
 #This function will check current total TX and RX in bytes
 #This is only useful when computing TX/RX speed 
-function cs_net_dev_get () {
+cs_net_dev_get () {
    cs_intfc="$1"
-   if [ "$cs_intfc" == "eth0" ]; then
+   if [ "$cs_intfc" = "eth0" ]; then
       cs_bytes=$(grep -w "$cs_intfc:" /proc/net/dev | awk '{print $10}') #get TX rate for sent packets (eth0)
    else 
       cs_bytes=$(grep -w "$cs_intfc:" /proc/net/dev | awk '{print $2}')  #get RX rate for received packets (ifb4eth0)
@@ -120,7 +120,7 @@ function cs_net_dev_get () {
 }
 
 #Show current TX/RX speed in Mbps for 30 seconds
-function cs_net_dev_show () {
+cs_net_dev_show () {
    cs_ctr=0
    cs_maxwait=30
 
@@ -144,7 +144,7 @@ function cs_net_dev_show () {
 
 #Convert bytes to Mbps
 #bytes is the main unit of measure
-function cs_to_mbit () {
+cs_to_mbit () {
    cs_bytes="$1"
    cs_mbits=$(((cs_bytes * 8) / 1000000))
    echo "$cs_mbits"
@@ -154,24 +154,24 @@ function cs_to_mbit () {
 #example: cs_upd_qdisc "eth0" "overhead 19"
 #example: cs_upd_qdisc "eth0" "rtt 10ms"
 #example: cs_upd_qdisc "eth0" "bandwidth 200mbit"
-function cs_upd_qdisc () {
+cs_upd_qdisc () {
    cs_cake_intf="$1"
    cs_cake_parm="$2"
    tc qdisc change dev ${cs_cake_intf} root cake ${cs_cake_parm}
 }
 
 #When bandwidth is set to Automatic in web ui, set bandwidth to 100gbit instead of unlimited for format consistency
-function cs_reset_bandwidth () {
+cs_reset_bandwidth () {
    cs_intfc="$1"
    qdisc=$(tc qdisc show dev "$cs_intfc" root | grep -oE "unlimited")
-   if [ $(cs_check_null "$qdisc") -ne 0 ]; then
+   if [ "$(cs_check_null "$qdisc")" -ne 0 ]; then
       cs_upd_qdisc "$cs_intfc" "bandwidth 100gbit"   
    fi
 }
 
 #Get qdisc parameter
 #Initial code allows checking of scheme, bandwidth, rtt, mpu and overhead.
-function cs_get_qdisc () {
+cs_get_qdisc () {
    cs_intfc="$1"
    cs_q_parm="$2"
    cs_ret_str=""
@@ -182,7 +182,7 @@ function cs_get_qdisc () {
          ;;
       bandwidth) 
          cs_ret_str=$(tc qdisc show dev "$cs_intfc" root | grep cake | grep -oE "bandwidth\s[0-9]+[a-zA-Z]{3,4}|unlimited")
-         if [ "$cs_ret_str" == "unlimited" ]; then
+         if [ "$cs_ret_str" = "unlimited" ]; then
             cs_reset_bandwidth "$cs_intfc"
             cs_ret_str=$(tc qdisc show dev "$cs_intfc" root | grep cake | grep -oE "bandwidth\s[0-9]+[a-zA-Z]{3,4}|unlimited") #rerun
          fi
@@ -206,7 +206,7 @@ function cs_get_qdisc () {
 }
 
 #Re-apply settings - This will be called every time nat restarts to apply the new mpu and overhead only
-function cs_apply_mpu_ovh () {
+cs_apply_mpu_ovh () {
    logger "Nat Restarted. Re-applying CAKE with new mpu and overhead from web ui"
    
    set -- $(cat $CS_PATH/spd.curr | grep -oE "^eth0.*" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}');
@@ -282,7 +282,7 @@ function cs_apply_mpu_ovh () {
 
 #Validates tc qdisc parameter
 #Initial code allows checking of scheme, bandwidth, rtt, mpu and overhead.
-function cs_validate_tc_parm () {
+cs_validate_tc_parm () {
    cs_tc_parm="$1"
    cs_tc_val="$2"
    
@@ -306,7 +306,7 @@ function cs_validate_tc_parm () {
             echo "$(cs_check_null "$cs_chk")"
          ;;      
       mpu)
-         if [ cs_check_null "$cs_tc_val" -eq 0 ]; then
+         if [ "$(cs_check_null "$cs_tc_val")" -eq 0 ]; then
             cs_chk=$(echo "$cs_tc_val" | grep -oE "^mpu\s[0-9]+")
             echo "$(cs_check_null "$cs_chk")"      
          else 
@@ -314,7 +314,7 @@ function cs_validate_tc_parm () {
          fi         
          ;;
       overhead)
-         if [ cs_check_null "$cs_tc_val" -eq 0 ]; then
+         if [ "$(cs_check_null "$cs_tc_val")" -eq 0 ]; then
             cs_chk=$(echo "$cs_tc_val" | grep -oE "^overhead\s[0-9]+")
             echo "$(cs_check_null "$cs_chk")"
          else 
@@ -330,7 +330,7 @@ function cs_validate_tc_parm () {
 
 #Checks passed string if null. 
 #Passed string will be trimmed first before checking
-function cs_check_null () {
+cs_check_null () {
    cs_str_chk=$(cs_trim "$1") 
    if [ -n "$cs_str_chk" ]; then
       echo "0"
@@ -339,7 +339,7 @@ function cs_check_null () {
    fi
 }
 
-function cs_pad_text () {
+cs_pad_text () {
    if [ -z "$1" ]; then
       echo "$2" | sed 's/^/                      --->   /'
    else
@@ -347,7 +347,7 @@ function cs_pad_text () {
    fi
 }
 
-function cs_default_str () {
+cs_default_str () {
    cs_chk_str="$1"
    cs_def_val="$2"
    
@@ -363,13 +363,13 @@ function cs_default_str () {
 #Check if cronjob for recurring task for CAKE-SpeedSync
 #Check last run of CAKE-SpeedSync showing the network througput analysis, Speedtest and Google Ping test
 #Check if CAKE is active and current settings
-function cs_status () {
+cs_status () {
    printf "\n[DSCP RULES]"
    printf  "\n    Active DSCP Rule:\n"
 
    for chain in PREROUTING INPUT FORWARD OUTPUT POSTROUTING; do
       cs_ipt="$(iptables-save -t mangle | grep -E 'DSCP' | grep -E "${chain}" | awk '{print NR, $0}')"
-      if [ ! -z "$cs_ipt" ]; then
+      if [ -n "$cs_ipt" ]; then
          cs_pad_text "${chain}" ""
          cs_pad_text "$cs_ipt" ""
          printf "\n"

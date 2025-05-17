@@ -23,12 +23,12 @@ BKU_DIR="$TGT_DIR/backup"
 TMP_DIR="/tmp/home/root/backup"
 
 #Function to fetch scripts from github
-function fetch_file() {
+fetch_file() {
     FILE_PATH="$1"
     curl -fsSL "https://raw.githubusercontent.com/$GIT_REPO/$BRANCH/$FILE_PATH" -o "$TGT_DIR/$(basename $FILE_PATH)"
 }
 
-function backup_file() {
+backup_file() {
     sh_full_path="$1"
     pscript_n=$(basename "$sh_full_path")
     bk_pre_name=$(date +"%Y%m%d%H%M%S")

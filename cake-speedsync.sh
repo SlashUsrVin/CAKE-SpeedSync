@@ -19,14 +19,15 @@
 
 #Source cake-speedsync related functions
 CS_PATH="/jffs/scripts/cake-speedsync"
-source "$CS_PATH/cake-ss-fn.sh"
+
+. "$CS_PATH/cake-ss-fn.sh"
 
 logparm="$1"
 
-function log () {
+log () {
    #replace % with %% except if % is followed by s (%s) which is a string argument for printf
    msg=$(echo "$1" | sed -e 's/%s/__KEEP_THIS__/g' -e 's/%/%%/g' -e 's/__KEEP_THIS__/%s/g')
-   if [ "$logparm" == "logging" ]; then
+   if [ "$logparm" = "logging" ]; then
       shift    #Remove msg (=$1) as 1st argument since msg can also contain multiple arguments (%s). This will avoid the whole string (msg) to be assigned to itself.
       printf -- "$msg\n" "$@"
    fi
@@ -93,14 +94,14 @@ if [ -f "$CS_PATH/cake.cfg" ]; then
       cf_rtt=$(echo "$line" | grep -oE "rtt [0-9]+ms")
       cf_bwp=$(echo "$line" | grep -oE "bandwidth ([8-9][0-9]|100)%" | grep -oE "[0-9]+") #minimum allowable is 80% and max is 100%
       cf_mem=$(echo "$line" | grep -oE "memlimit [0-9]+MB")
-      if [ "$cf_intfc" == "eth0" ]; then
+      if [ "$cf_intfc" = "eth0" ]; then
          cf_eSCH="$cf_sch"
          ertt="$cf_rtt"
          ebw_alloc="$cf_bwp"
          emem="$cf_mem"
       fi
 
-      if [ "$cf_intfc" == "ifb4eth0" ]; then
+      if [ "$cf_intfc" = "ifb4eth0" ]; then
          cf_iSCH="$cf_sch"
          irtt="$cf_rtt"
          ibw_alloc="$cf_bwp"
@@ -146,7 +147,7 @@ log "$qdisc"
 json="$CS_PATH/spdtstresjson.json"
 > "$json"
 log "\nRunning ookla speedtest to generate network load..."
-((ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json > "$json") &)
+ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json > "$json" &
 
 log "\nCapturing network throughput while speedtest runs in the background..."
 
@@ -198,13 +199,13 @@ if [ ! -s "$json" ]; then
    echo "Speed test failed!" >> cake-ss.log
    
    #If enabled before speedtest, restore previous CAKE settings. Otherwise, set default cake for eth0
-   if [ "$eqosenabled" == "0" ]; then
+   if [ "$eqosenabled" = "0" ]; then
       cs_add_eth0 "$qd_eSCH" "$qd_eSPD" "$qd_eRTT" "$qd_eOVH" "$qd_eMPU"
    else
       cs_default_eth0
    fi
    #If enabled before speedtest, restore previous CAKE settings. Otherwise, set default cake for ifb4eth0
-   if [ "$iqosenabled" == "0" ]; then
+   if [ "$iqosenabled" = "0" ]; then
       cs_add_ifb4eth0 "$qd_iSCH" "$qd_iSPD" "$qd_iRTT" "$qd_iOVH" "$qd_iMPU"
    else
       cs_default_ifb4eth0
