@@ -19,7 +19,7 @@ Adjusts CAKE QoS bandwidth periodically based on network throughput. This allows
 5. Open CMD or PowerShell and connect to your router via SSH (example: ssh admin@192.168.1.1)  
 6. Run syntax to install:            
 ```markdown
-curl -fsSL "https://raw.githubusercontent.com/mvin321/CAKE-SpeedSync/main/install.sh" | sh -s -- main
+curl -fsSL "https://raw.githubusercontent.com/mvin321/CAKE-SpeedSync/main/install.sh" | sh
 ```
 7. Script runs immediately after installation.  
 
