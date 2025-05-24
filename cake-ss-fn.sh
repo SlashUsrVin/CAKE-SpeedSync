@@ -24,8 +24,8 @@ cs_init () {
    cru d cake-speedsync
 
    #Re-add cron job
-   #Run every 3 hours from 7:00 AM to 11:59 PM and 12 AM to 1 AM"
-   cru a cake-speedsync "0 7-23/3,0-1 * * * $CS_PATH/cake-speedsync.sh"   
+   #Run every 4 hours from 7:00 AM to 11:59 PM and 12 AM to 1:59 AM"
+   cru a cake-speedsync "0 7-23/4,0-1 * * * /jffs/scripts/exec-lock.sh $CS_PATH/cake-speedsync.sh"   
 }
 
 #Enable CAKE for all outgoing (upload) traffic with default value. 
