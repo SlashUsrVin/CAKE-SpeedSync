@@ -1,6 +1,6 @@
 #!/bin/sh
 # CAKE-SpeedSync - Installer dev branc
-# Copyright (C) 2025 https://github.com/mvin321
+# Copyright (C) 2025 https://github.com/SlashUsrVin
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-CSS_REPO="mvin321/CAKE-SpeedSync"
+CSS_REPO="SlashUsrVin/CAKE-SpeedSync"
 BRANCH="main"
 JFFS_DIR="/jffs/scripts"
 TGT_DIR="/jffs/scripts/cake-speedsync"
@@ -61,7 +61,7 @@ fetch_file "$CSS_REPO" "cake.cfg" "$TGT_DIR"
 fetch_file "$CSS_REPO" "cake-ss-fn.sh" "$TGT_DIR"
 fetch_file "$CSS_REPO" "services-start" "$TGT_DIR"
 fetch_file "$CSS_REPO" "nat-start" "$TGT_DIR"
-fetch_file "mvin321/ExecLock-Shell" "exec-lock.sh" "$JFFS_DIR" #additional script logs every run in syslog and prevents concurrency
+fetch_file "SlashUsrVin/ExecLock-Shell" "exec-lock.sh" "$JFFS_DIR" #additional script logs every run in syslog and prevents concurrency
 
 #Make scripts executable
 chmod +x $TGT_DIR/cake-speedsync.sh
