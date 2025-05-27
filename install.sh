@@ -43,6 +43,9 @@ backup_file() {
     fi
 }
 
+#Show message once the installer starts executing
+printf "\nInstallation in progress.. Please wait..\n"
+
 #Create backup
 mkdir -p "$TMP_DIR"
 > "$TMP_DIR/backup.list"
