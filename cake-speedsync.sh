@@ -245,6 +245,9 @@ i_oth="$imem"
 cs_add_eth0 "$eScheme" "bandwidth ${ULSpeedMbps}mbit" "$ertt" "$qd_eOVH" "$qd_eMPU" "$e_oth"
 cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "$irtt" "$qd_iOVH" "$qd_iMPU" "$i_oth"
 
+#Reset mangle counters
+iptables -t mangle -Z
+
 #Save bandwidth and rtt so it can be retrieved by cs_apply_mpu_ovh function
 echo "eth0 ${eScheme} bandwidth ${ULSpeedMbps}mbit ${ertt} ${e_oth}" > $CS_PATH/spd.curr
 echo "ifb4eth0 ${iScheme} bandwidth ${DLSpeedMbps}mbit ${irtt} ${i_oth}" >> $CS_PATH/spd.curr
