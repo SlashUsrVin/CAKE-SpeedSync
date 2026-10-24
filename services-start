@@ -4,4 +4,7 @@
 #Source cake-speedsync related functions, perform cake-speedsync and re-add cron job
 sleep 60
 [ -f "/jffs/scripts/cake-speedsync/cake-ss-fn.sh" ] && . /jffs/scripts/cake-speedsync/cake-ss-fn.sh && cs_init
- 
+
+#run cake-speedsync via exec-lock
+cru d cake-speedsync
+cru a cake-speedsync "0 7-23/12 * * * /jffs/scripts/exec-lock.sh /jffs/scripts/cake-speedsync/cake-speedsync.sh" 
