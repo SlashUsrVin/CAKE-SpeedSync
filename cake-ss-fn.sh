@@ -39,8 +39,8 @@ cs_default_eth0 () {
    if [ -z "$cs_eScheme" ]; then
       cs_eScheme="diffserv3"
    fi
-   cs_disable_eth0 #Delete first then re-add
-   tc qdisc add dev eth0 root cake bandwidth 100gbit ${cs_eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 100ms noatm overhead 22 mpu 84
+   cs_disable_eth0 #Delete first then re-add   
+   tc qdisc add dev eth0 root cake bandwidth 100gbit ${cs_eScheme} dual-srchost nat nowash no-ack-filter split-gso rtt 100ms noatm overhead 38 mpu 84
 }
 
 #Enable CAKE for all incoming (download) traffic with default value. 
@@ -52,8 +52,8 @@ cs_default_ifb4eth0 () {
       cs_iScheme="diffserv3"
    fi
    #Enable CAKE with default value. Temporarily set bandwidt to 100gbit to avoid throttling while speedtest runs. Speed and Latency will update after cake-speedsync runs.
-   cs_disable_ifb4eth0
-   tc qdisc add dev ifb4eth0 root cake bandwidth 100gbit  ${cs_iScheme} dual-dsthost nat nowash ingress no-ack-filter split-gso rtt 100ms noatm overhead 22 mpu 84
+   cs_disable_ifb4eth0   
+   tc qdisc add dev ifb4eth0 root cake bandwidth 100gbit  ${cs_iScheme} dual-dsthost nat nowash ingress no-ack-filter split-gso rtt 100ms noatm overhead 38 mpu 84
 }
 
 #This function is used to re-enable CAKE for outgoing traffic with updated settings for the following:
