@@ -61,9 +61,13 @@ done
 date >> "$CS_PATH/cake-ss.log"
  
 #Get current CAKE settings
-qdisc=$(tc qdisc show dev eth0 root | grep cake)
+qdisc=$(tc qdisc show dev eth0 root | grep cake | grep -oE bandwidth.*)
 log "\nCurrent CAKE settings:"
 log "$qdisc"
+
+#Extract Current Cake Settings
+printf "%s\n%s\n" "tc qdisc del dev eth0 root" "tc qdisc add dev eth0 root cake $qdisc" > "$CS_PATH/eth0.sh"
+
 if [ -n "$qdisc" ]; then
    #Retrieve current CAKE eth0 setting. 
    qd_eSPD=$(cs_get_qdisc "eth0" "bandwidth")
@@ -75,8 +79,12 @@ if [ -n "$qdisc" ]; then
 else
    eqosenabled="1"
 fi
-qdisc=$(tc qdisc show dev ifb4eth0 root | grep cake)
+qdisc=$(tc qdisc show dev ifb4eth0 root | grep cake | grep -oE bandwidth.*)
 log "$qdisc"
+
+#Extract Current Cake Settings
+printf "%s\n%s\n" "tc qdisc del dev ifb4eth0 root" "tc qdisc add dev ifb4eth0 root cake $qdisc" > "$CS_PATH/ifb4eth0.sh"
+
 if [ -n "$qdisc" ]; then
    qd_iSPD=$(cs_get_qdisc "ifb4eth0" "bandwidth")
    qd_iSCH=$(cs_get_qdisc "ifb4eth0" "scheme")
@@ -116,8 +124,8 @@ cf_eSCH=$(cs_default_str "$cf_eSCH" "diffserv3")
 cf_iSCH=$(cs_default_str "$cf_iSCH" "besteffort")
 ertt=$(cs_default_str "$ertt" "rtt 50ms")
 irtt=$(cs_default_str "$irtt" "rtt 50ms")
-ebw_alloc=$(cs_default_str "$ebw_alloc" "95")
-ibw_alloc=$(cs_default_str "$ibw_alloc" "95")
+ebw_alloc=$(cs_default_str "$ebw_alloc" "82")
+ibw_alloc=$(cs_default_str "$ibw_alloc" "90")
 
 eScheme="$cf_eSCH"
 iScheme="$cf_iSCH"
@@ -126,8 +134,8 @@ log "\n$CS_PATH/cake.cfg"
 log "$(cat $CS_PATH/cake.cfg)"
 
 #Enable CAKE with default settings for speedtest
-cs_default_eth0 "diffserv4"      #force to diffserv4 for speedtest
-cs_default_ifb4eth0 "diffserv4"  #force to diffserv4 for speedtest
+cs_default_eth0 "diffserv3"      #force to diffserv3 for speedtest
+cs_default_ifb4eth0 "besteffort"  #force to besteffort for speedtest
 
 #Use default MPU and Overhead if not yet set in the web UI
 if [ "$eqosenabled" -ne 0 ]; then
@@ -149,7 +157,7 @@ log "$qdisc"
 json="$CS_PATH/spdtstresjson.json"
 > "$json"
 log "\nRunning ookla speedtest to generate network load..."
-ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json > "$json" &
+/usr/sbin/ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json > "$json" &
 
 log "\nCapturing network throughput while speedtest runs in the background..."
 
@@ -159,6 +167,8 @@ maxeBps=0
 maxiBps=0
 rank2iBps=0
 rank2eBps=0
+rank3iBps=0
+rank3eBps=0
 while [ "$ctr" -lt "$max_wait_time" ]; do
 
    dl=$(cs_net_dev_get "ifb4eth0")
@@ -175,6 +185,8 @@ while [ "$ctr" -lt "$max_wait_time" ]; do
          maxeBps=$eBps
       elif [ "$eBps" -gt "$rank2eBps" ]; then
          rank2eBps=$eBps #2nd highest to try to  account for burst speed       
+      elif [ "$eBps" -gt "$rank3eBps" ]; then
+         rank3eBps=$eBps #3rd highest to try to  account for burst speed       
       fi
 
       if [ "$iBps" -gt "$maxiBps" ]; then
@@ -182,6 +194,8 @@ while [ "$ctr" -lt "$max_wait_time" ]; do
          maxiBps=$iBps
       elif [ "$iBps" -gt "$rank2iBps" ]; then
          rank2iBps=$iBps #2nd highest to try to  account for burst speed
+      elif [ "$iBps" -gt "$rank3iBps" ]; then
+         rank3iBps=$iBps #3rd highest to try to  account for burst speed
       fi
    fi
 
@@ -196,39 +210,32 @@ done
 
 spdtstresjson=$(cat "$json")
 
-#Restore previous CAKE settings and exit if speedtest fails
-if [ ! -s "$json" ]; then
-   echo "Speed test failed!" >> cake-ss.log
-   
-   #If enabled before speedtest, restore previous CAKE settings. Otherwise, set default cake for eth0
-   if [ "$eqosenabled" = "0" ]; then
-      cs_add_eth0 "$qd_eSCH" "$qd_eSPD" "$qd_eRTT" "$qd_eOVH" "$qd_eMPU"
-   else
-      cs_default_eth0
-   fi
-   #If enabled before speedtest, restore previous CAKE settings. Otherwise, set default cake for ifb4eth0
-   if [ "$iqosenabled" = "0" ]; then
-      cs_add_ifb4eth0 "$qd_iSCH" "$qd_iSPD" "$qd_iRTT" "$qd_iOVH" "$qd_iMPU"
-   else
-      cs_default_ifb4eth0
-   fi
+#Convert max tx rate from net/dev to Mbps
+maxDLMbps=$(cs_to_mbit "$maxiBps")
+maxULMbps=$(cs_to_mbit "$maxeBps")
+
+r2DLMbps=$(cs_to_mbit "$rank3iBps")
+r2ULMbps=$(cs_to_mbit "$rank3eBps")
+
+qd_ULMB=$(echo "$qd_eSPD" | grep -oE "[0-9]+")
+qd_DLMB=$(echo "$qd_iSPD" | grep -oE "[0-9]+")
+
+if [ "$maxULMbps" -lt "60" ] || [ "$maxDLMbps" -lt "80" ]; then 
+   logger -p 3 "[CAKE-SpeedSync] Error encountered in speedtest. Restoring previous settings.."
+   chmod 777 "$CS_PATH/ifb4eth0.sh"
+   chmod 777 "$CS_PATH/eth0.sh"
+   sh "$CS_PATH/ifb4eth0.sh"
+   sh "$CS_PATH/eth0.sh"
    exit 1
 fi
 
 log "\nCalculating bandwidth...."
 
 #Get speedtest DL and UL speed for reference only (data not used)
-spdDL=$(echo "$spdtstresjson" | grep -oE '\],"bandwidth":[0-9]+' | grep -oE [0-9]+)
+spdDL=$(echo "$spdtstresjson" | grep -oE '"download":\{"servers":\[(.*)\],"bandwidth":[0-9]+' | grep -oE '"bandwidth":[0-9]+' | grep -oE [0-9]+)
 spdUL=$(echo "$spdtstresjson" | grep -oE '"upload":\{"bandwidth":[0-9]+' | grep -oE [0-9]+)
 spdDL=$(cs_to_mbit "$spdDL")
 spdUL=$(cs_to_mbit "$spdUL")
-
-#Convert max tx rate from net/dev to Mbps
-maxDLMbps=$(cs_to_mbit "$maxiBps")
-maxULMbps=$(cs_to_mbit "$maxeBps")
-
-r2DLMbps=$(cs_to_mbit "$rank2iBps")
-r2ULMbps=$(cs_to_mbit "$rank2eBps")
 
 #Set bandwidth for CAKE
 DLSpeedMbps=$(((r2DLMbps * ibw_alloc) / 100))
@@ -255,7 +262,7 @@ echo "ifb4eth0 ${iScheme} bandwidth ${DLSpeedMbps}mbit ${irtt} ${i_oth}" >> $CS_
 #Logs
 printf "\n\n"
 {
-printf "    Network Analysis: --->   Download: %sMbps(Max) %sMbps(rank 2) -> %sMbps(%s%%)    Upload: %sMbps(Max) %sMbps(rank 2) -> %sMbps(%s%%)" "$maxDLMbps" "$r2DLMbps" "$DLSpeedMbps" "$ibw_alloc" "$maxULMbps" "$r2ULMbps" "$ULSpeedMbps" "$ebw_alloc"
+printf "    Network Analysis: --->   Download: %sMbps(Max) %sMbps(rank 3) -> %sMbps(%s%%)    Upload: %sMbps(Max) %sMbps(rank 3) -> %sMbps(%s%%)" "$maxDLMbps" "$r2DLMbps" "$DLSpeedMbps" "$ibw_alloc" "$maxULMbps" "$r2ULMbps" "$ULSpeedMbps" "$ebw_alloc"
 printf "\n    SpeedTest Result: --->   Download: %sMbps    Upload: %sMbps    Latency: %sms" "$spdDL" "$spdUL" "$iping" 
 printf "\n"
 } | tee -a "$CS_PATH/cake-ss.log"
