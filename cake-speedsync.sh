@@ -157,7 +157,7 @@ log "$qdisc"
 json="$CS_PATH/spdtstresjson.json"
 > "$json"
 log "\nRunning ookla speedtest to generate network load..."
-/usr/sbin/ookla -c http://www.speedtest.net/api/embed/vz0azjarf5enop8a/config -p no -f json > "$json" &
+/usr/sbin/ookla -c https://config.speedtest.net/v1/embed/4tiouex6gsnzq55o/config -p no -f json > "$json" &
 
 log "\nCapturing network throughput while speedtest runs in the background..."
 
