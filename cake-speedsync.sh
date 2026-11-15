@@ -232,7 +232,7 @@ fi
 log "\nCalculating bandwidth...."
 
 #Get speedtest DL and UL speed for reference only (data not used)
-spdDL=$(echo "$spdtstresjson" | grep -oE '"download":\{"bandwidth":[0-9]+' | grep -oE '"bandwidth":[0-9]+' | grep -oE [0-9]+)
+spdDL=$(echo "$spdtstresjson" | grep -oE '"download":\{("servers":\[(.*)\],)?"bandwidth":[0-9]+' | grep -oE '"bandwidth":[0-9]+' | grep -oE [0-9]+)
 spdUL=$(echo "$spdtstresjson" | grep -oE '"upload":\{"bandwidth":[0-9]+' | grep -oE [0-9]+)
 spdDL=$(cs_to_mbit "$spdDL")
 spdUL=$(cs_to_mbit "$spdUL")
