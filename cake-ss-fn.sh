@@ -22,13 +22,6 @@ export CS_PATH="/jffs/scripts/cake-speedsync"
 cs_init () {
    #Run speedtest and apply cake settings
    $CS_PATH/cake-speedsync.sh "$1"
-
-   #Delete cron job to avoid duplicate
-   cru d cake-speedsync
-
-   #Re-add cron job
-   #Run every 4 hours from 7:00 AM to 11:59 PM and 12 AM to 1:59 AM"
-   cru a cake-speedsync "0 7-23/4,0-1 * * * /jffs/scripts/exec-lock.sh $CS_PATH/cake-speedsync.sh"   
 }
 
 #Enable CAKE for all outgoing (upload) traffic with default value. 
