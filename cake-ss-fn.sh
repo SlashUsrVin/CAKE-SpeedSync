@@ -22,6 +22,8 @@ export CS_PATH="/jffs/scripts/cake-speedsync"
 cs_init () {
    #Run speedtest and apply cake settings
    $CS_PATH/cake-speedsync.sh "$1"
+   cru d cake-speedsync
+   cru a cake-speedsync "0 7-23/12 * * * /jffs/scripts/exec-lock.sh /jffs/scripts/cake-speedsync/cake-speedsync.sh"
 }
 
 #Enable CAKE for all outgoing (upload) traffic with default value. 
