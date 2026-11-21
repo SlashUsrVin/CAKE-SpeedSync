@@ -193,7 +193,7 @@ cs_get_qdisc () {
          cs_ret_str=$(tc qdisc show dev "$cs_intfc" root | grep cake | grep -oE "overhead\s[0-9]+")
          ;;
       *) 
-         logger "Please check cs_get_qdisc function. Unable to retrieve ${cs_q_parm}."
+         logger -p user.err "Please check cs_get_qdisc function. Unable to retrieve ${cs_q_parm}."
          exit 1
          ;;
    esac
@@ -203,15 +203,16 @@ cs_get_qdisc () {
 
 #Re-apply settings - This will be called every time nat restarts to apply the new mpu and overhead only
 cs_apply_mpu_ovh () {
-   logger "Nat Restarted. Re-applying CAKE with new mpu and overhead from web ui"
-   
-   set -- $(cat $CS_PATH/spd.curr | grep -oE "^eth0.*" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}');
+   logger -p user.err "Nat Restarted. Re-applying CAKE with new mpu and overhead from web ui"
+   DIR_HOME_TMP="/tmp/home/root/cake-speedsync"
+
+   set -- $(cat $DIR_HOME_TMP/spd.curr | grep -oE "^eth0.*" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}');
    cs_cf_eScheme="$2"
    cs_cr_eSpd="$3 $4"
    cs_cr_eRtt="$5 $6"
    cs_cr_eMem="$7 $8"
    
-   set -- $(cat $CS_PATH/spd.curr | grep -oE "^ifb4eth0.*" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}')
+   set -- $(cat $DIR_HOME_TMP/spd.curr | grep -oE "^ifb4eth0.*" | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}')
    cs_cf_iScheme="$2"
    cs_cr_iSpd="$3 $4"
    cs_cr_iRtt="$5 $6"
@@ -228,42 +229,42 @@ cs_apply_mpu_ovh () {
    cs_ret_cd="0"
    cs_tparm="scheme"
    if [ $(cs_validate_tc_parm "$cs_tparm" "$cs_cf_eScheme") -ne 0 ]; then 
-      logger "eth0 - Invalid ${cs_tparm}: ${cs_cf_eScheme}"
+      logger -p user.err "eth0 - Invalid ${cs_tparm}: ${cs_cf_eScheme}"
       cs_ret_cd="1"
    elif [ $(cs_validate_tc_parm "$cs_tparm" "$cs_cf_iScheme") -ne 0 ]; then 
-      logger "ifb4eth0 - Invalid ${cs_tparm}: ${cs_cf_iScheme}"
+      logger -p user.err "ifb4eth0 - Invalid ${cs_tparm}: ${cs_cf_iScheme}"
       cs_ret_cd="1"
    fi 
    cs_tparm="bandwidth"
    if [ $(cs_validate_tc_parm "$cs_tparm" "$cs_cr_eSpd") -eq 1 ]; then 
-      logger "eth0 - Invalid ${cs_tparm}: ${cs_cr_eSpd}"
+      logger -p user.err "eth0 - Invalid ${cs_tparm}: ${cs_cr_eSpd}"
       cs_ret_cd="1"
    elif [ $(cs_validate_tc_parm "$cs_tparm" "$cs_cr_iSpd") -eq 1 ]; then 
-      logger "ifb4eth0 - Invalid ${cs_tparm}: ${cs_cr_iSpd}"
+      logger -p user.err "ifb4eth0 - Invalid ${cs_tparm}: ${cs_cr_iSpd}"
       cs_ret_cd="1"
    fi 
    cs_tparm="rtt"
    if [ $(cs_validate_tc_parm "$cs_tparm" "$cs_cr_eRtt") -eq 1 ]; then 
-      logger "eth0 - Invalid ${cs_tparm}: ${cs_cr_eRtt}"
+      logger -p user.err "eth0 - Invalid ${cs_tparm}: ${cs_cr_eRtt}"
       cs_ret_cd="1"
    elif [ $(cs_validate_tc_parm "$cs_tparm" "$cs_cr_iRtt") -eq 1 ]; then 
-      logger "ifb4eth0 - Invalid ${cs_tparm}: ${cs_cr_iRtt}"
+      logger -p user.err "ifb4eth0 - Invalid ${cs_tparm}: ${cs_cr_iRtt}"
       cs_ret_cd="1"
    fi 
    cs_tparm="overhead"
    if [ $(cs_validate_tc_parm "$cs_tparm" "$cs_q_eovh") -eq 1 ]; then 
-      logger "eth0 - Invalid ${cs_tparm}: ${cs_q_eovh}"
+      logger -p user.err "eth0 - Invalid ${cs_tparm}: ${cs_q_eovh}"
       cs_ret_cd="1"
    elif [ $(cs_validate_tc_parm "$cs_tparm" "$cs_q_iovh") -eq 1 ]; then 
-      logger "ifb4eth0 - Invalid ${cs_tparm}: ${cs_q_iovh}"
+      logger -p user.err "ifb4eth0 - Invalid ${cs_tparm}: ${cs_q_iovh}"
       cs_ret_cd="1"
    fi 
    cs_tparm="mpu"
    if [ $(cs_validate_tc_parm "$cs_tparm" "$cs_q_empu") -eq 1 ]; then 
-      logger "eth0 - Invalid ${cs_tparm}: ${cs_q_empu}"
+      logger -p user.err "eth0 - Invalid ${cs_tparm}: ${cs_q_empu}"
       cs_ret_cd="1"
    elif [ $(cs_validate_tc_parm "$cs_tparm" "$cs_q_impu") -eq 1 ]; then 
-      logger "ifb4eth0 - Invalid ${cs_tparm}: ${cs_q_impu}"
+      logger -p user.err "ifb4eth0 - Invalid ${cs_tparm}: ${cs_q_impu}"
       cs_ret_cd="1"
    fi 
 
@@ -393,10 +394,11 @@ cs_status () {
    if [ -z "$cs_cakeqdisc" ]; then
       cs_pad_text "" "WARNING: CAKE is not currently active. Run /jffs/scripts/services-start or /jffs/scripts/cake-speedsync/cake-speedsync.sh"
    fi
+   printf "\n\n"
+   grep -oE "\[CAKE-SpeedSync\]\[SpeedTest-Result\].*" /tmp/syslog.log | tail -n 1
+   grep -oE "\[CAKE-SpeedSync\]\[Network-Analysis\].*" /tmp/syslog.log | tail -n 1
+   printf "\n\nLast Run: "
+   grep "\[CAKE-SpeedSync\]\[SpeedTest-Result\]" /tmp/syslog.log | tail -n 1 | awk '{print $1, $2, $3}'
 
-   printf "\n\n      CAKE-SpeedSync: --->   Last Run: "
-
-   cs_dyntclog=$(cat $CS_PATH/cake-ss.log | tail -3)
-   echo "$cs_dyntclog"
    printf "\n\n"
 }

@@ -20,6 +20,7 @@
 #SCRIPT-ALIAS:CAKE-SpeedSync
 
 #Source cake-speedsync related functions
+DIR_HOME_TMP="/tmp/home/root/cake-speedsync"
 CS_PATH="/jffs/scripts/cake-speedsync"
 
 . "$CS_PATH/cake-ss-fn.sh"
@@ -29,10 +30,30 @@ logparm="$1"
 log () {
    #replace % with %% except if % is followed by s (%s) which is a string argument for printf
    msg=$(echo "$1" | sed -e 's/%s/__KEEP_THIS__/g' -e 's/%/%%/g' -e 's/__KEEP_THIS__/%s/g')
+   loglevel=$(echo "$2" | grep -oE "\b[0-7]{1}\b")
    if [ "$logparm" = "logging" ]; then
       shift    #Remove msg (=$1) as 1st argument since msg can also contain multiple arguments (%s). This will avoid the whole string (msg) to be assigned to itself.
-      printf -- "$msg\n" "$@"
+      printf -- "$msg\n" "$@"      
+      if [ -n "$loglevel" ]; then
+         loglevel=$((loglevel + 8)) #User level instead of kernel level logs
+         logger -t "[CAKE-SpeedSync]"-p "$loglevel" $(printf -- "$msg\n" "$@")
+      fi
    fi
+}
+
+ookla_speedtest () {   
+   json=$(/usr/sbin/ookla -c https://config.speedtest.net/v1/embed/4tiouex6gsnzq55o/config -p no -f json)
+   
+   #Get speedtest DL and UL speed for reference only (data not used)
+   spdtstresjson=$(echo "$json")
+   spdDL=$(echo "$spdtstresjson" | grep -oE '"download":\{("servers":\[(.*)\],)?"bandwidth":[0-9]+' | grep -oE '"bandwidth":[0-9]+' | grep -oE [0-9]+)
+   spdUL=$(echo "$spdtstresjson" | grep -oE '"upload":\{"bandwidth":[0-9]+' | grep -oE [0-9]+)
+   spdDL=$(cs_to_mbit "$spdDL")
+   spdUL=$(cs_to_mbit "$spdUL")
+
+   #Extract latency from json (for logging purposes only)
+   iping=$(echo "$spdtstresjson" | grep -oE '"latency":\s?[0-9]+(\.[0-9]*)?' | grep -oE '[0-9]+(\.[0-9]*)?')
+   logger -t [CAKE-SpeedSync][SpeedTest-Result] -p user.err "$(printf "Download: %sMbps      Upload: %sMbps      Latency: %sms" "$spdDL" "$spdUL" "$iping" )"   
 }
 
 log "\nRunning CAKE-SpeedSync with logs enabled...."
@@ -57,16 +78,13 @@ while [ "$ctr" -lt "$max_wait_time" ]; do
    ctr=$((ctr + 1))
 done
 
-#Log start date and time
-date >> "$CS_PATH/cake-ss.log"
- 
 #Get current CAKE settings
 qdisc=$(tc qdisc show dev eth0 root | grep cake | grep -oE bandwidth.*)
 log "\nCurrent CAKE settings:"
 log "$qdisc"
 
 #Extract Current Cake Settings
-printf "%s\n%s\n" "tc qdisc del dev eth0 root" "tc qdisc add dev eth0 root cake $qdisc" > "$CS_PATH/eth0.sh"
+eth0=$(printf "%s\n%s\n" "tc qdisc del dev eth0 root" "tc qdisc add dev eth0 root cake $qdisc")
 
 if [ -n "$qdisc" ]; then
    #Retrieve current CAKE eth0 setting. 
@@ -83,7 +101,7 @@ qdisc=$(tc qdisc show dev ifb4eth0 root | grep cake | grep -oE bandwidth.*)
 log "$qdisc"
 
 #Extract Current Cake Settings
-printf "%s\n%s\n" "tc qdisc del dev ifb4eth0 root" "tc qdisc add dev ifb4eth0 root cake $qdisc" > "$CS_PATH/ifb4eth0.sh"
+ifb4eth0=$(printf "%s\n%s\n" "tc qdisc del dev ifb4eth0 root" "tc qdisc add dev ifb4eth0 root cake $qdisc")
 
 if [ -n "$qdisc" ]; then
    qd_iSPD=$(cs_get_qdisc "ifb4eth0" "bandwidth")
@@ -154,22 +172,20 @@ qdisc=$(tc qdisc show dev ifb4eth0 root | grep cake)
 log "$qdisc"
 
 #Run Speedtest and generate result in json format
-json="$CS_PATH/spdtstresjson.json"
-> "$json"
 log "\nRunning ookla speedtest to generate network load..."
-/usr/sbin/ookla -c https://config.speedtest.net/v1/embed/4tiouex6gsnzq55o/config -p no -f json > "$json" &
+ookla_speedtest &
+pid=$!
 
 log "\nCapturing network throughput while speedtest runs in the background..."
 
-ctr=0
-max_wait_time=60 #max wait time before quitting
 maxeBps=0
 maxiBps=0
 rank2iBps=0
 rank2eBps=0
 rank3iBps=0
 rank3eBps=0
-while [ "$ctr" -lt "$max_wait_time" ]; do
+
+while kill -0 "$pid" 2>/dev/null; do
 
    dl=$(cs_net_dev_get "ifb4eth0")
    ul=$(cs_net_dev_get "eth0")
@@ -199,16 +215,10 @@ while [ "$ctr" -lt "$max_wait_time" ]; do
       fi
    fi
 
-   if [  -s "$json" ]; then
-      break #SpeedTest is done
-   fi
    prevdl=$dl
    prevul=$ul
    sleep 1
-   ctr=$((ctr + 1))
 done
-
-spdtstresjson=$(cat "$json")
 
 #Convert max tx rate from net/dev to Mbps
 maxDLMbps=$(cs_to_mbit "$maxiBps")
@@ -221,28 +231,17 @@ qd_ULMB=$(echo "$qd_eSPD" | grep -oE "[0-9]+")
 qd_DLMB=$(echo "$qd_iSPD" | grep -oE "[0-9]+")
 
 if [ "$maxULMbps" -lt "60" ] || [ "$maxDLMbps" -lt "80" ]; then 
-   logger -p 3 "[CAKE-SpeedSync] Error encountered in speedtest. Restoring previous settings.."
-   chmod 777 "$CS_PATH/ifb4eth0.sh"
-   chmod 777 "$CS_PATH/eth0.sh"
-   sh "$CS_PATH/ifb4eth0.sh"
-   sh "$CS_PATH/eth0.sh"
+   log "Error encountered in speedtest or bandwidth too low. Restoring previous settings.." "3"
+   sh -c "$ifb4eth0"
+   sh -c "$eth0"
    exit 1
 fi
 
 log "\nCalculating bandwidth...."
 
-#Get speedtest DL and UL speed for reference only (data not used)
-spdDL=$(echo "$spdtstresjson" | grep -oE '"download":\{("servers":\[(.*)\],)?"bandwidth":[0-9]+' | grep -oE '"bandwidth":[0-9]+' | grep -oE [0-9]+)
-spdUL=$(echo "$spdtstresjson" | grep -oE '"upload":\{"bandwidth":[0-9]+' | grep -oE [0-9]+)
-spdDL=$(cs_to_mbit "$spdDL")
-spdUL=$(cs_to_mbit "$spdUL")
-
 #Set bandwidth for CAKE
 DLSpeedMbps=$(((r2DLMbps * ibw_alloc) / 100))
 ULSpeedMbps=$(((r2ULMbps * ebw_alloc) / 100))
-
-#Extract latency from json (for logging purposes only)
-iping=$(echo "$spdtstresjson" | grep -oE '"latency":\s?[0-9]+(\.[0-9]*)?' | grep -oE '[0-9]+(\.[0-9]*)?')
 
 #Append additional cake settings
 e_oth="$emem"
@@ -256,19 +255,18 @@ cs_add_ifb4eth0 "$iScheme" "bandwidth ${DLSpeedMbps}mbit" "$irtt" "$qd_iOVH" "$q
 iptables -t mangle -Z
 
 #Save bandwidth and rtt so it can be retrieved by cs_apply_mpu_ovh function
-echo "eth0 ${eScheme} bandwidth ${ULSpeedMbps}mbit ${ertt} ${e_oth}" > $CS_PATH/spd.curr
-echo "ifb4eth0 ${iScheme} bandwidth ${DLSpeedMbps}mbit ${irtt} ${i_oth}" >> $CS_PATH/spd.curr
+mkdir -p "$DIR_HOME_TMP"
+echo "eth0 ${eScheme} bandwidth ${ULSpeedMbps}mbit ${ertt} ${e_oth}" > $DIR_HOME_TMP/spd.curr
+echo "ifb4eth0 ${iScheme} bandwidth ${DLSpeedMbps}mbit ${irtt} ${i_oth}" >> $DIR_HOME_TMP/spd.curr
 
 #Logs
 printf "\n\n"
-{
-printf "    Network Analysis: --->   Download: %sMbps(Max) %sMbps(rank 3) -> %sMbps(%s%%)    Upload: %sMbps(Max) %sMbps(rank 3) -> %sMbps(%s%%)" "$maxDLMbps" "$r2DLMbps" "$DLSpeedMbps" "$ibw_alloc" "$maxULMbps" "$r2ULMbps" "$ULSpeedMbps" "$ebw_alloc"
-printf "\n    SpeedTest Result: --->   Download: %sMbps    Upload: %sMbps    Latency: %sms" "$spdDL" "$spdUL" "$iping" 
+printf "Download: %sMbps(Max) %sMbps(rank 3) -> %sMbps(%s%%)    Upload: %sMbps(Max) %sMbps(rank 3) -> %sMbps(%s%%)\n" \
+       "$maxDLMbps" "$r2DLMbps" "$DLSpeedMbps" "$ibw_alloc" "$maxULMbps" "$r2ULMbps" "$ULSpeedMbps" "$ebw_alloc"  \
+       | awk '{print $1, $6, $7, $12}' | logger -s -t [CAKE-SpeedSync][Network-Analysis] -p user.err
+grep "\[CAKE-SpeedSync\]\[SpeedTest-Result\]" /tmp/syslog.log | tail -n 1 | awk '{print $4, $5, $6, "    ", $7, $8, "    ", $9, $10}'
 printf "\n"
-} | tee -a "$CS_PATH/cake-ss.log"
+
 printf "\n\nUpdated CAKE Settings:\n" 
 tc qdisc | grep "eth0 root" | grep -oE 'dev.*' | sed 's/^/                      --->   /'
 printf "\n\nCake-SpeedSync completed successfully!\n\n\n"
-
-#Store logs for the last 7 runs only (tail -24)
-tail -24 "$CS_PATH/cake-ss.log" > "$CS_PATH/temp.log" && mv "$CS_PATH/temp.log" "$CS_PATH/cake-ss.log" && chmod 666 "$CS_PATH/cake-ss.log"
