@@ -263,7 +263,7 @@ echo "ifb4eth0 ${iScheme} bandwidth ${DLSpeedMbps}mbit ${irtt} ${i_oth}" >> $DIR
 printf "\n\n"
 printf "Download: %sMbps(Max) %sMbps(rank 3) -> %sMbps(%s%%)    Upload: %sMbps(Max) %sMbps(rank 3) -> %sMbps(%s%%)\n" \
        "$maxDLMbps" "$r2DLMbps" "$DLSpeedMbps" "$ibw_alloc" "$maxULMbps" "$r2ULMbps" "$ULSpeedMbps" "$ebw_alloc"  \
-       | awk '{print $1, $6, $7, $12}' | logger -s -t [CAKE-SpeedSync][Network-Analysis] -p user.err
+       | awk '{print $1, $6, $7, $12, "(Percentage based on max throughput)"}' | logger -s -t [CAKE-SpeedSync][Network-Analysis] -p user.err
 grep "\[CAKE-SpeedSync\]\[SpeedTest-Result\]" /tmp/syslog.log | tail -n 1 | awk '{print $4, $5, $6, "    ", $7, $8, "    ", $9, $10}'
 printf "\n"
 
